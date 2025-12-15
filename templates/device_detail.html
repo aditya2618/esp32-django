@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ device.name }} - Device Detail{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>🔧 {{ device.name }}</h2>
+    <p><strong>Node Name:</strong> <code>{{ device.node_name }}</code></p>
+    <p><strong>Home ID:</strong> {{ device.home_id }}</p>
+    <p><strong>Status:</strong> 
+        {% if device.is_online %}
+        <span class="badge badge-online">Online</span>
+        {% else %}
+        <span class="badge badge-offline">Offline</span>
+        {% endif %}
+    </p>
+    <p><strong>Last Seen:</strong> 
+        {% if device.last_seen %}
+        {{ device.last_seen|date:"Y-m-d H:i:s" }}
+        {% else %}
+        Never
+        {% endif %}
+    </p>
+    
+    <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="{% url 'add_entity' device.id %}" class="btn btn-success">+ Add Entity</a>
+        <a href="{% url 'gpio_mapping' device.id %}" class="btn">GPIO Mapping</a>
+        <a href="{% url 'esp32_pinout' device.id %}" class="btn">View Pinout</a>
+        <a href="{% url 'firmware_page' device.id %}" class="btn btn-warning">Firmware/OTA</a>
+        <a href="{% url 'view_yaml' device.id %}" class="btn">Generate YAML</a>
+        <a href="{% url 'factory_reset' device.id %}" class="btn btn-danger">Factory Reset</a>
+    </div>
+</div>
+
+{% if switches %}
+<div class="card">
+    <h2>🔌 Switches</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+        {% for entity in switches %}
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+            <h3 style="font-size: 1rem; margin-bottom: 10px;">{{ entity.entity_name }}</h3>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">
+                State: <strong>{{ entity.state|default:"Unknown" }}</strong>
+            </p>
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="entity_id" value="{{ entity.id }}">
+                <input type="hidden" name="value" value="{% if entity.state == 'ON' %}OFF{% else %}ON{% endif %}">
+                <button type="submit" class="btn btn-small {% if entity.state == 'ON' %}btn-danger{% else %}btn-success{% endif %}">
+                    {% if entity.state == 'ON' %}Turn OFF{% else %}Turn ON{% endif %}
+                </button>
+            </form>
+            <a href="{% url 'edit_entity' entity.id %}" class="btn btn-small btn-warning">Edit</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if lights %}
+<div class="card">
+    <h2>💡 Lights</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+        {% for entity in lights %}
+        <div style="background: #fff3cd; padding: 15px; border-radius: 8px;">
+            <h3 style="font-size: 1rem; margin-bottom: 10px;">{{ entity.entity_name }}</h3>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">
+                State: <strong>{{ entity.state|default:"Unknown" }}</strong>
+            </p>
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="entity_id" value="{{ entity.id }}">
+                <input type="hidden" name="value" value="{% if entity.state == 'ON' %}OFF{% else %}ON{% endif %}">
+                <button type="submit" class="btn btn-small {% if entity.state == 'ON' %}btn-danger{% else %}btn-success{% endif %}">
+                    {% if entity.state == 'ON' %}Turn OFF{% else %}Turn ON{% endif %}
+                </button>
+            </form>
+            <a href="{% url 'edit_entity' entity.id %}" class="btn btn-small btn-warning">Edit</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if fans %}
+<div class="card">
+    <h2>🌀 Fans</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+        {% for entity in fans %}
+        <div style="background: #d1ecf1; padding: 15px; border-radius: 8px;">
+            <h3 style="font-size: 1rem; margin-bottom: 10px;">{{ entity.entity_name }}</h3>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">
+                State: <strong>{{ entity.state|default:"Unknown" }}</strong>
+            </p>
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="entity_id" value="{{ entity.id }}">
+                <input type="hidden" name="value" value="{% if entity.state == 'ON' %}OFF{% else %}ON{% endif %}">
+                <button type="submit" class="btn btn-small {% if entity.state == 'ON' %}btn-danger{% else %}btn-success{% endif %}">
+                    {% if entity.state == 'ON' %}Turn OFF{% else %}Turn ON{% endif %}
+                </button>
+            </form>
+            <a href="{% url 'edit_entity' entity.id %}" class="btn btn-small btn-warning">Edit</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if sensors %}
+<div class="card">
+    <h2>🌡️ Sensors</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Sensor Name</th>
+                <th>Value</th>
+                <th>Last Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entity in sensors %}
+            <tr>
+                <td>{{ entity.entity_name }}</td>
+                <td><strong>{{ entity.state|default:"N/A" }}</strong></td>
+                <td>{{ entity.last_updated|date:"Y-m-d H:i:s"|default:"Never" }}</td>
+                <td>
+                    <a href="{% url 'edit_entity' entity.id %}" class="btn btn-small btn-warning">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if not switches and not lights and not fans and not sensors %}
+<div class="card">
+    <p style="text-align: center; padding: 40px; color: #999;">
+        No entities configured. <a href="{% url 'add_entity' device.id %}">Add your first entity</a>
+    </p>
+</div>
+{% endif %}
+{% endblock %}

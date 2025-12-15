@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Bulk OTA Update{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📡 Bulk OTA Update</h2>
+    <p style="margin-bottom: 20px; color: #666;">Update multiple devices at once with the same firmware version.</p>
+    
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Select Firmware Version</label>
+            {{ form.firmware }}
+        </div>
+        
+        <div class="form-group">
+            <label>Select Devices to Update</label>
+            {% for device in form.devices.field.queryset %}
+            <div style="margin-bottom: 8px;">
+                <input type="checkbox" name="devices" value="{{ device.id }}" class="form-check-input" id="device_{{ device.id }}">
+                <label for="device_{{ device.id }}" style="margin-left: 5px;">
+                    {{ device.name }} ({{ device.node_name }})
+                    {% if device.is_online %}
+                    <span class="badge badge-online">Online</span>
+                    {% else %}
+                    <span class="badge badge-offline">Offline</span>
+                    {% endif %}
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <button type="submit" class="btn btn-warning">Start Bulk OTA Update</button>
+        <a href="{% url 'dashboard' %}" class="btn">Cancel</a>
+    </form>
+</div>
+
+<div class="card">
+    <h2>⚠️ Important Notes</h2>
+    <ul style="color: #666; line-height: 1.8;">
+        <li>Devices must be online to receive OTA updates</li>
+        <li>Update process may take 1-5 minutes per device</li>
+        <li>Do not power off devices during update</li>
+        <li>Check OTA status page for progress</li>
+    </ul>
+</div>
+{% endblock %}

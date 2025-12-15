@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}ESP32 Pinout - {{ device.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📟 ESP32 GPIO Pinout - {{ device.name }}</h2>
+    <p><a href="{% url 'device_detail' device.id %}" class="btn btn-small">← Back to Device</a>
+       <a href="{% url 'gpio_mapping' device.id %}" class="btn btn-small">GPIO Mapping</a></p>
+</div>
+
+<div class="card">
+    <h2>Pin Status</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>GPIO Pin</th>
+                <th>Status</th>
+                <th>Assigned To</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pin in pins %}
+            <tr style="{% if pin.status == 'reserved' %}background: #ffe5e5;{% elif pin.status == 'assigned' %}background: #e5ffe5;{% endif %}">
+                <td><strong>GPIO {{ pin.number }}</strong></td>
+                <td>
+                    {% if pin.status == 'reserved' %}
+                    <span class="badge badge-failed">Reserved/Unsafe</span>
+                    {% elif pin.status == 'assigned' %}
+                    <span class="badge badge-success">Assigned</span>
+                    {% else %}
+                    <span class="badge" style="background: #e0e0e0; color: #333;">Free</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if pin.assigned_to %}
+                    {{ pin.assigned_to }}
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 4px;">
+        <strong>⚠️ Reserved Pins (DO NOT USE):</strong> 
+        {% for pin in reserved_pins %}GPIO {{ pin }}{% if not forloop.last %}, {% endif %}{% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}ESPHome YAML - {{ device.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📄 ESPHome YAML Configuration - {{ device.name }}</h2>
+    <p><a href="{% url 'device_detail' device.id %}" class="btn btn-small">← Back to Device</a>
+       <a href="{% url 'generate_yaml' device.id %}" class="btn btn-success">⬇️ Download YAML</a></p>
+</div>
+
+<div class="card">
+    <h2>Generated Configuration</h2>
+    <pre style="background: #f8f9fa; padding: 20px; border-radius: 4px; overflow-x: auto; font-family: 'Courier New', monospace; font-size: 0.9rem;">{{ yaml_content }}</pre>
+</div>
+
+<div class="card">
+    <h2>📝 Next Steps</h2>
+    <ol style="line-height: 2; color: #666;">
+        <li>Download the YAML file using the button above</li>
+        <li>Edit WiFi credentials and MQTT broker settings</li>
+        <li>Verify GPIO pin assignments match your hardware</li>
+        <li>Install ESPHome: <code>pip install esphome</code></li>
+        <li>Flash to ESP32: <code>esphome run {{ device.node_name }}.yaml</code></li>
+        <li>Monitor logs: <code>esphome logs {{ device.node_name }}.yaml</code></li>
+    </ol>
+</div>
+{% endblock %}

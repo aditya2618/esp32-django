@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Firmware & OTA - {{ device.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>🔄 Firmware & OTA Update - {{ device.name }}</h2>
+    <p><a href="{% url 'device_detail' device.id %}" class="btn btn-small">← Back to Device</a></p>
+</div>
+
+<div class="card">
+    <h2>Trigger OTA Update</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Select Firmware Version</label>
+            {{ form.firmware }}
+        </div>
+        <button type="submit" class="btn btn-warning">Trigger OTA Update</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Available Firmware Versions</h2>
+    {% if firmwares %}
+    <table>
+        <thead>
+            <tr>
+                <th>Version</th>
+                <th>File</th>
+                <th>Uploaded</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fw in firmwares %}
+            <tr>
+                <td><strong>v{{ fw.version }}</strong></td>
+                <td><code>{{ fw.file.name }}</code></td>
+                <td>{{ fw.uploaded_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p style="margin-top: 15px;"><a href="{% url 'upload_firmware' %}" class="btn btn-success">+ Upload New Firmware</a></p>
+    {% else %}
+    <p style="text-align: center; padding: 40px; color: #999;">
+        No firmware uploaded yet. <a href="{% url 'upload_firmware' %}">Upload firmware</a>
+    </p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>OTA History for This Device</h2>
+    {% if ota_history %}
+    <table>
+        <thead>
+            <tr>
+                <th>Version</th>
+                <th>Status</th>
+                <th>Started</th>
+                <th>Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ota in ota_history %}
+            <tr>
+                <td>v{{ ota.version }}</td>
+                <td>
+                    <span class="badge badge-{{ ota.status }}">{{ ota.get_status_display }}</span>
+                </td>
+                <td>{{ ota.started_at|date:"Y-m-d H:i:s" }}</td>
+                <td>{{ ota.updated_at|date:"Y-m-d H:i:s" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align: center; padding: 40px; color: #999;">
+        No OTA updates performed yet.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

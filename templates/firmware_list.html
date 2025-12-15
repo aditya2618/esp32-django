@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Firmware List{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>💾 Firmware Versions</h2>
+    <a href="{% url 'upload_firmware' %}" class="btn btn-success">+ Upload New Firmware</a>
+</div>
+
+<div class="card">
+    {% if firmwares %}
+    <table>
+        <thead>
+            <tr>
+                <th>Version</th>
+                <th>File</th>
+                <th>Description</th>
+                <th>Uploaded</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fw in firmwares %}
+            <tr>
+                <td><strong>v{{ fw.version }}</strong></td>
+                <td><code>{{ fw.file.name }}</code></td>
+                <td>{{ fw.description|default:"—" }}</td>
+                <td>{{ fw.uploaded_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    <a href="{{ fw.file.url }}" class="btn btn-small" download>Download</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align: center; padding: 40px; color: #999;">
+        No firmware uploaded yet. <a href="{% url 'upload_firmware' %}">Upload your first firmware</a>
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

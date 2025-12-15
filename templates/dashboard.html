@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Smart Home{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📊 Dashboard</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px;">
+            <h3 style="margin-bottom: 5px;">{{ total_devices }}</h3>
+            <p style="color: #666;">Total Devices</p>
+        </div>
+        <div style="background: #e8f5e9; padding: 20px; border-radius: 8px;">
+            <h3 style="margin-bottom: 5px;">{{ online_devices }}</h3>
+            <p style="color: #666;">Online</p>
+        </div>
+        <div style="background: #fce4ec; padding: 20px; border-radius: 8px;">
+            <h3 style="margin-bottom: 5px;">{{ total_devices|add:"-"|add:online_devices }}</h3>
+            <p style="color: #666;">Offline</p>
+        </div>
+    </div>
+    <a href="{% url 'add_device' %}" class="btn btn-success">+ Add New Device</a>
+</div>
+
+<div class="card">
+    <h2>📱 Devices</h2>
+    {% if devices %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Node Name</th>
+                <th>Home ID</th>
+                <th>Entities</th>
+                <th>Status</th>
+                <th>Last Seen</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for device in devices %}
+            <tr>
+                <td><strong>{{ device.name }}</strong></td>
+                <td><code>{{ device.node_name }}</code></td>
+                <td>{{ device.home_id }}</td>
+                <td>{{ device.entities.count }}</td>
+                <td>
+                    {% if device.is_online %}
+                    <span class="badge badge-online">Online</span>
+                    {% else %}
+                    <span class="badge badge-offline">Offline</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if device.last_seen %}
+                    {{ device.last_seen|date:"Y-m-d H:i:s" }}
+                    {% else %}
+                    Never
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'device_detail' device.id %}" class="btn btn-small">View</a>
+                    <a href="{% url 'edit_device' device.id %}" class="btn btn-small btn-warning">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align: center; padding: 40px; color: #999;">
+        No devices found. <a href="{% url 'add_device' %}">Add your first device</a>
+    </p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>⚡ Quick Actions</h2>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="{% url 'upload_firmware' %}" class="btn">Upload Firmware</a>
+        <a href="{% url 'bulk_ota' %}" class="btn btn-warning">Bulk OTA Update</a>
+        <a href="{% url 'ota_status' %}" class="btn">View OTA Status</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Factory Reset - {{ device.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>⚠️ Factory Reset - {{ device.name }}</h2>
+    <p><a href="{% url 'device_detail' device.id %}" class="btn btn-small">← Back to Device</a></p>
+</div>
+
+<div class="card" style="border: 2px solid #dc3545;">
+    <h2 style="color: #dc3545;">⛔ WARNING</h2>
+    <p style="font-size: 1.1rem; margin-bottom: 20px;">
+        This will erase ALL configuration from the device including:
+    </p>
+    <ul style="color: #721c24; line-height: 2; margin-bottom: 20px;">
+        <li>WiFi credentials</li>
+        <li>GPIO mappings</li>
+        <li>Automation rules</li>
+        <li>All saved settings</li>
+    </ul>
+    <p style="color: #721c24; font-weight: bold;">
+        The device will reboot and enter provisioning mode.
+    </p>
+    
+    <form method="post" style="margin-top: 30px;">
+        {% csrf_token %}
+        <div class="form-group">
+            <label style="display: flex; align-items: center;">
+                {{ form.confirm }}
+                <span style="margin-left: 8px;">{{ form.confirm.label }}</span>
+            </label>
+            {% if form.confirm.errors %}
+            <div style="color: #dc3545; font-size: 0.875rem;">{{ form.confirm.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <button type="submit" class="btn btn-danger">Perform Factory Reset</button>
+        <a href="{% url 'device_detail' device.id %}" class="btn">Cancel</a>
+    </form>
+</div>
+{% endblock %}

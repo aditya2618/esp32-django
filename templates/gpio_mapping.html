@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}GPIO Mapping - {{ device.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>⚙️ GPIO Pin Mapping - {{ device.name }}</h2>
+    <p><a href="{% url 'device_detail' device.id %}" class="btn btn-small">← Back to Device</a>
+       <a href="{% url 'esp32_pinout' device.id %}" class="btn btn-small">View Pinout</a></p>
+</div>
+
+<div class="card">
+    <h2>Add GPIO Mapping</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            {% for field in form %}
+            <div class="form-group">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div style="color: #dc3545; font-size: 0.875rem;">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-success">Add Mapping</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Current GPIO Mappings</h2>
+    {% if mappings %}
+    <table>
+        <thead>
+            <tr>
+                <th>Logical ID</th>
+                <th>GPIO Pin</th>
+                <th>Type</th>
+                <th>Default Value</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mapping in mappings %}
+            <tr>
+                <td><code>{{ mapping.logical_id }}</code></td>
+                <td><strong>GPIO {{ mapping.gpio_pin }}</strong></td>
+                <td>{{ mapping.get_type_display }}</td>
+                <td>{{ mapping.default_value }}</td>
+                <td>
+                    <a href="{% url 'delete_gpio_mapping' mapping.id %}" 
+                       class="btn btn-small btn-danger" 
+                       onclick="return confirm('Delete this GPIO mapping?')">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align: center; padding: 40px; color: #999;">
+        No GPIO mappings configured yet.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

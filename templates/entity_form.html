@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - {{ device.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>{{ title }} - {{ device.name }}</h2>
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="form-group">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+            <div style="color: #dc3545; font-size: 0.875rem; margin-top: 5px;">
+                {{ field.errors }}
+            </div>
+            {% endif %}
+            {% if field.help_text %}
+            <small style="color: #666; display: block; margin-top: 3px;">{{ field.help_text }}</small>
+            {% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-success">Save Entity</button>
+        <a href="{% url 'device_detail' device.id %}" class="btn">Cancel</a>
+        {% if entity %}
+        <a href="{% url 'delete_entity' entity.id %}" class="btn btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
