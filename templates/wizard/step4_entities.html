@@ -1,0 +1,442 @@
+{% extends 'base.html' %}
+
+{% block title %}Step {{ step }}/{{ total_steps }}: {{ step_title }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">
+<style>
+    .entity-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        border-left: 4px solid #3498db;
+    }
+
+    .entity-card h4 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+    }
+
+    .entity-form {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        border: 2px dashed #ddd;
+        margin-bottom: 20px;
+    }
+
+    .icon-picker,
+    .pin-picker-container {
+        position: relative;
+    }
+
+    .icon-preview {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        margin-top: 5px;
+    }
+
+    .icon-preview i {
+        font-size: 24px;
+        color: #3498db;
+    }
+
+    .icon-grid {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 300px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        z-index: 1000;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .icon-grid.active {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 5px;
+    }
+
+    .icon-option {
+        padding: 10px;
+        text-align: center;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .icon-option:hover {
+        background: #e3f2fd;
+    }
+
+    .icon-option i {
+        font-size: 24px;
+        color: #333;
+    }
+
+    .pin-picker {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        z-index: 1000;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 5px;
+    }
+
+    .pin-picker.active {
+        display: block;
+    }
+
+    .pin-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+        gap: 8px;
+    }
+
+    .pin-option {
+        padding: 10px;
+        text-align: center;
+        cursor: pointer;
+        border-radius: 4px;
+        border: 2px solid #ddd;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .pin-option.available {
+        background: #e8f5e9;
+        border-color: #28a745;
+        color: #155724;
+    }
+
+    .pin-option.available:hover {
+        background: #c8e6c9;
+        transform: scale(1.05);
+    }
+
+    .pin-option.used {
+        background: #f8d7da;
+        border-color: #dc3545;
+        color: #721c24;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .pin-option.selected {
+        background: #007bff;
+        border-color: #0056b3;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 900px; margin: 20px auto;">
+    <!-- Progress Bar -->
+    <div style="margin-bottom: 30px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <span style="font-weight: 600;">Step {{ step }} of {{ total_steps }}</span>
+            <span style="color: #666;">67% Complete</span>
+        </div>
+        <div style="background: #e0e0e0; height: 8px; border-radius: 4px; overflow: hidden;">
+            <div style="background: #28a745; height: 100%; width: 67%; transition: width 0.3s;"></div>
+        </div>
+    </div>
+
+    <h2>{{ step_title }}</h2>
+    <p style="color: #666; margin-bottom: 30px;">{{ step_description }}</p>
+
+    <!-- Existing Entities -->
+    {% if entities %}
+    <h3>📋 Configured Entities ({{ entities|length }})</h3>
+    {% for entity in entities %}
+    <div class="entity-card">
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    {% if entity.icon %}
+                    <i class="mdi {{ entity.icon }}" style="font-size: 24px; color: #3498db;"></i>
+                    {% endif %}
+                    <h4>{{ entity.friendly_name|default:entity.entity_name }}</h4>
+                </div>
+                <p style="margin: 5px 0; color: #666;">
+                    <strong>Type:</strong> {{ entity.entity_type|title }} |
+                    <strong>GPIO Pin:</strong> {{ entity.gpio_pin|default:"Not assigned" }} |
+                    <strong>Room:</strong> {{ entity.room|default:"Not set" }}
+                </p>
+                <p style="margin: 5px 0; color: #666; font-size: 0.9rem;">
+                    <strong>ID:</strong> <code>{{ entity.entity_name }}</code>
+                </p>
+            </div>
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="remove_entity">
+                <input type="hidden" name="index" value="{{ forloop.counter0 }}">
+                <button type="submit" class="btn btn-small btn-danger">Remove</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <p style="margin: 0;">No entities added yet. Add your first entity below!</p>
+    </div>
+    {% endif %}
+
+    <!-- Add New Entity Form -->
+    <div class="entity-form">
+        <h3 style="margin-top: 0;">➕ Add New Entity</h3>
+        <form method="post" id="entityForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_entity">
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label for="entity_name">Entity ID * (Technical Name)</label>
+                    <input type="text" name="entity_name" id="entity_name" class="form-control" required
+                        placeholder="e.g., living_room_light">
+                    <small style="color: #666;">Lowercase, underscores only</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="entity_type">Entity Type *</label>
+                    <select name="entity_type" id="entity_type" class="form-control" required
+                        onchange="updateDefaultIcon()">
+                        <option value="">-- Select Type --</option>
+                        {% for value, label in entity_types %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="friendly_name">Friendly Name</label>
+                    <input type="text" name="friendly_name" id="friendly_name" class="form-control"
+                        placeholder="e.g., Living Room Light">
+                    <small style="color: #666;">Display name for your app</small>
+                </div>
+
+                <div class="form-group pin-picker-container">
+                    <label for="gpio_pin">GPIO Pin Number</label>
+                    <input type="text" name="gpio_pin" id="gpio_pin" class="form-control"
+                        placeholder="Click to select pin" readonly onclick="togglePinPicker()">
+                    <small style="color: #666;">Click to select from available GPIO pins</small>
+                    <div id="pinPicker" class="pin-picker">
+                        <div style="font-weight: 600; margin-bottom: 10px;">ESP32 GPIO Pins</div>
+                        <div class="pin-grid" id="pinGrid"></div>
+                        <div style="margin-top: 10px; font-size: 0.85rem; color: #666;">
+                            <span style="color: #28a745;">● Available</span> |
+                            <span style="color: #dc3545;">● Used</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="room">Room</label>
+                    <input type="text" name="room" id="room" class="form-control" placeholder="e.g., Living Room">
+                    <small style="color: #666;">Location of this entity</small>
+                </div>
+
+                <div class="form-group icon-picker">
+                    <label for="icon">Icon (Material Design)</label>
+                    <input type="text" name="icon" id="icon" class="form-control" placeholder="e.g., mdi-lightbulb"
+                        readonly onclick="toggleIconPicker()">
+                    <small style="color: #666;">Click to select an icon</small>
+                    <div class="icon-preview" id="iconPreview" style="display: none;">
+                        <i id="iconPreviewIcon" class="mdi"></i>
+                        <span id="iconPreviewText"></span>
+                    </div>
+                    <div class="icon-grid" id="iconGrid"></div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success" style="margin-top: 15px;">
+                ➕ Add Entity
+            </button>
+        </form>
+    </div>
+
+    <!-- Navigation -->
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="continue">
+        <div style="display: flex; justify-content: space-between; margin-top: 30px;">
+            <a href="{% url 'wizard_step3_mqtt' %}" class="btn">← Back</a>
+            <button type="submit" class="btn btn-success">Next: Review Configuration →</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Common Material Design Icons for smart home
+    const commonIcons = [
+        { icon: 'mdi-lightbulb', name: 'Light Bulb' },
+        { icon: 'mdi-lightbulb-outline', name: 'Light Outline' },
+        { icon: 'mdi-ceiling-light', name: 'Ceiling Light' },
+        { icon: 'mdi-lamp', name: 'Lamp' },
+        { icon: 'mdi-light-switch', name: 'Light Switch' },
+        { icon: 'mdi-toggle-switch', name: 'Toggle Switch' },
+        { icon: 'mdi-power', name: 'Power' },
+        { icon: 'mdi-fan', name: 'Fan' },
+        { icon: 'mdi-ceiling-fan', name: 'Ceiling Fan' },
+        { icon: 'mdi-thermometer', name: 'Temperature' },
+        { icon: 'mdi-water-percent', name: 'Humidity' },
+        { icon: 'mdi-motion-sensor', name: 'Motion' },
+        { icon: 'mdi-door-closed', name: 'Door' },
+        { icon: 'mdi-window-shutter', name: 'Shutter' },
+        { icon: 'mdi-thermostat', name: 'Thermostat' },
+        { icon: 'mdi-lock', name: 'Lock' },
+        { icon: 'mdi-gesture-tap-button', name: 'Button' },
+    ];
+
+    // Default icons by entity type
+    const defaultIcons = {
+        'switch': 'mdi-light-switch',
+        'light': 'mdi-lightbulb',
+        'fan': 'mdi-fan',
+        'sensor': 'mdi-thermometer',
+        'binary_sensor': 'mdi-motion-sensor',
+        'cover': 'mdi-window-shutter',
+        'climate': 'mdi-thermostat',
+        'lock': 'mdi-lock',
+        'button': 'mdi-gesture-tap-button',
+    };
+
+    // GPIO Pin Management
+    const usablePins = [2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33];
+    let usedPins = [];
+
+    // Get used pins from existing entities
+    function getUsedPins() {
+        usedPins = [];
+        {% if entities %}
+        {% for entity in entities %}
+        {% if entity.gpio_pin %}
+        usedPins.push({{ entity.gpio_pin }});
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+}
+
+    // Populate icon grid
+    function populateIconGrid() {
+        const grid = document.getElementById('iconGrid');
+        grid.innerHTML = commonIcons.map(item => `
+        <div class="icon-option" onclick="selectIcon('${item.icon}')" title="${item.name}">
+            <i class="mdi ${item.icon}"></i>
+        </div>
+    `).join('');
+    }
+
+    // Populate pin grid
+    function populatePinGrid() {
+        const grid = document.getElementById('pinGrid');
+        const selectedPin = document.getElementById('gpio_pin').value;
+
+        grid.innerHTML = usablePins.map(pin => {
+            let pinClass = 'available';
+            let clickable = true;
+
+            if (usedPins.includes(pin) && pin != selectedPin) {
+                pinClass = 'used';
+                clickable = false;
+            } else if (pin == selectedPin) {
+                pinClass = 'selected';
+            }
+
+            const onclick = clickable ? `onclick="selectPin(${pin})"` : '';
+            const title = usedPins.includes(pin) && pin != selectedPin ? 'Already in use' : `GPIO ${pin}`;
+
+            return `
+            <div class="pin-option ${pinClass}" ${onclick} title="${title}">
+                ${pin}
+            </div>
+        `;
+        }).join('');
+    }
+
+    // Toggle icon picker
+    function toggleIconPicker() {
+        const grid = document.getElementById('iconGrid');
+        grid.classList.toggle('active');
+    }
+
+    // Toggle pin picker
+    function togglePinPicker() {
+        const picker = document.getElementById('pinPicker');
+        picker.classList.toggle('active');
+        if (picker.classList.contains('active')) {
+            populatePinGrid();
+        }
+    }
+
+    // Select icon
+    function selectIcon(iconClass) {
+        const input = document.getElementById('icon');
+        const preview = document.getElementById('iconPreview');
+        const previewIcon = document.getElementById('iconPreviewIcon');
+        const previewText = document.getElementById('iconPreviewText');
+
+        input.value = iconClass;
+        previewIcon.className = 'mdi ' + iconClass;
+        previewText.textContent = iconClass;
+        preview.style.display = 'inline-flex';
+
+        toggleIconPicker();
+    }
+
+    // Select pin
+    function selectPin(pin) {
+        const input = document.getElementById('gpio_pin');
+        input.value = pin;
+        togglePinPicker();
+    }
+
+    // Update default icon when entity type changes
+    function updateDefaultIcon() {
+        const entityType = document.getElementById('entity_type').value;
+        const iconInput = document.getElementById('icon');
+
+        if (entityType && defaultIcons[entityType] && !iconInput.value) {
+            selectIcon(defaultIcons[entityType]);
+        }
+    }
+
+    // Close pickers when clicking outside
+    document.addEventListener('click', function (event) {
+        const iconPicker = document.querySelector('.icon-picker');
+        const iconGrid = document.getElementById('iconGrid');
+        const pinContainer = document.querySelector('.pin-picker-container');
+        const pinPicker = document.getElementById('pinPicker');
+
+        if (iconPicker && !iconPicker.contains(event.target)) {
+            iconGrid.classList.remove('active');
+        }
+
+        if (pinContainer && !pinContainer.contains(event.target)) {
+            pinPicker.classList.remove('active');
+        }
+    });
+
+    // Initialize
+    populateIconGrid();
+    getUsedPins();
+</script>
+{% endblock %}

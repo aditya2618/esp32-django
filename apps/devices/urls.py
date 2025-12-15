@@ -1,14 +1,31 @@
 from django.urls import path
 from . import views
+from . import wizard
+from . import connection_views
+from . import delete_views
 
 urlpatterns = [
     # Dashboard
+    # Wizard URLs
+    path('wizard/', wizard.wizard_start, name='wizard_start'),
+    path('wizard/step1/', wizard.wizard_step1_device_info, name='wizard_step1_device_info'),
+    path('wizard/step2/', wizard.wizard_step2_wifi, name='wizard_step2_wifi'),
+    path('wizard/step3/', wizard.wizard_step3_mqtt, name='wizard_step3_mqtt'),
+    path('wizard/step4/', wizard.wizard_step4_entities, name='wizard_step4_entities'),
+    path('wizard/step5/', wizard.wizard_step5_review, name='wizard_step5_review'),
+    path('wizard/step6/', wizard.wizard_step6_complete, name='wizard_step6_complete'),
+    
+    # Connection check
+    path('api/check-esp32/', connection_views.check_esp32_connection, name='check_esp32_connection'),
+    
+    # Existing URLs
     path('', views.dashboard, name='dashboard'),
     
     # Device management
     path('device/add/', views.add_device, name='add_device'),
     path('device/<int:device_id>/', views.device_detail, name='device_detail'),
     path('device/<int:device_id>/edit/', views.edit_device, name='edit_device'),
+    path('device/<int:device_id>/delete/', delete_views.delete_device, name='delete_device'),
     
     # Entity management
     path('device/<int:device_id>/entity/add/', views.add_entity, name='add_entity'),

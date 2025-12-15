@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Step {{ step }}/{{ total_steps }}: {{ step_title }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 20px auto;">
+    <!-- Progress Bar -->
+    <div style="margin-bottom: 30px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <span style="font-weight: 600;">Step {{ step }} of {{ total_steps }}</span>
+            <span style="color: #666;">33% Complete</span>
+        </div>
+        <div style="background: #e0e0e0; height: 8px; border-radius: 4px; overflow: hidden;">
+            <div style="background: #28a745; height: 100%; width: 33%; transition: width 0.3s;"></div>
+        </div>
+    </div>
+
+    <h2>{{ step_title }}</h2>
+    <p style="color: #666; margin-bottom: 30px;">{{ step_description }}</p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="wifi_ssid">WiFi Network Name (SSID) *</label>
+            <input type="text" name="wifi_ssid" id="wifi_ssid" class="form-control"
+                value="{{ wifi_data.ssid|default:'' }}" required placeholder="e.g., MyHomeWiFi">
+            <small style="color: #666;">The name of your WiFi network</small>
+        </div>
+
+        <div class="form-group">
+            <label for="wifi_password">WiFi Password *</label>
+            <input type="password" name="wifi_password" id="wifi_password" class="form-control"
+                value="{{ wifi_data.password|default:'' }}" required placeholder="Enter your WiFi password">
+            <small style="color: #666;">Your WiFi network password</small>
+            <div style="margin-top: 5px;">
+                <input type="checkbox" id="show_password" onclick="togglePassword()">
+                <label for="show_password" style="font-weight: normal; cursor: pointer;">Show password</label>
+            </div>
+        </div>
+
+        <div style="background: #e3f2fd; padding: 15px; border-radius: 4px; margin: 20px 0;">
+            <strong>🔒 Security Note:</strong><br>
+            Your WiFi password will be stored in the ESP32 firmware. Make sure to keep the generated YAML file secure.
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 30px;">
+            <a href="{% url 'wizard_step1_device_info' %}" class="btn">← Back</a>
+            <button type="submit" class="btn btn-success">Next: MQTT Configuration →</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function togglePassword() {
+        var passwordField = document.getElementById('wifi_password');
+        var checkbox = document.getElementById('show_password');
+        passwordField.type = checkbox.checked ? 'text' : 'password';
+    }
+</script>
+{% endblock %}

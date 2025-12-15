@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}Step {{ step }}/{{ total_steps }}: {{ step_title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .review-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .review-section h3 {
+        margin-top: 0;
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+    }
+
+    .info-row {
+        display: flex;
+        padding: 10px 0;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        font-weight: 600;
+        width: 200px;
+        color: #666;
+    }
+
+    .info-value {
+        flex: 1;
+        color: #333;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 900px; margin: 20px auto;">
+    <!-- Progress Bar -->
+    <div style="margin-bottom: 30px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <span style="font-weight: 600;">Step {{ step }} of {{ total_steps }}</span>
+            <span style="color: #666;">83% Complete</span>
+        </div>
+        <div style="background: #e0e0e0; height: 8px; border-radius: 4px; overflow: hidden;">
+            <div style="background: #28a745; height: 100%; width: 83%; transition: width 0.3s;"></div>
+        </div>
+    </div>
+
+    <h2>{{ step_title }}</h2>
+    <p style="color: #666; margin-bottom: 30px;">{{ step_description }}</p>
+
+    <!-- Device Information -->
+    <div class="review-section">
+        <h3>📱 Device Information</h3>
+        <div class="info-row">
+            <div class="info-label">Device Name:</div>
+            <div class="info-value">{{ wizard_data.device.name }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Home ID:</div>
+            <div class="info-value"><code>{{ wizard_data.device.home_id }}</code></div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Node Name:</div>
+            <div class="info-value"><code>{{ wizard_data.device.node_name }}</code></div>
+        </div>
+    </div>
+
+    <!-- WiFi Configuration -->
+    <div class="review-section">
+        <h3>📡 WiFi Configuration</h3>
+        <div class="info-row">
+            <div class="info-label">Network (SSID):</div>
+            <div class="info-value">{{ wizard_data.wifi.ssid }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Password:</div>
+            <div class="info-value">••••••••</div>
+        </div>
+    </div>
+
+    <!-- MQTT Configuration -->
+    <div class="review-section">
+        <h3>🔌 MQTT Configuration</h3>
+        <div class="info-row">
+            <div class="info-label">Broker Address:</div>
+            <div class="info-value">{{ wizard_data.mqtt.broker }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Port:</div>
+            <div class="info-value">{{ wizard_data.mqtt.port }}</div>
+        </div>
+        {% if wizard_data.mqtt.username %}
+        <div class="info-row">
+            <div class="info-label">Username:</div>
+            <div class="info-value">{{ wizard_data.mqtt.username }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Entities -->
+    <div class="review-section">
+        <h3>⚡ Entities ({{ wizard_data.entities|length }})</h3>
+        {% for entity in wizard_data.entities %}
+        <div
+            style="background: white; padding: 15px; border-radius: 4px; margin-bottom: 10px; border-left: 4px solid #3498db;">
+            <div style="display: flex; justify-content: space-between;">
+                <div>
+                    <strong style="font-size: 1.1rem;">{{ entity.friendly_name|default:entity.entity_name }}</strong>
+                    <span
+                        style="background: #e3f2fd; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; margin-left: 10px;">
+                        {{ entity.entity_type|title }}
+                    </span>
+                </div>
+                <div style="text-align: right; color: #666;">
+                    {% if entity.gpio_pin %}
+                    <strong>GPIO {{ entity.gpio_pin }}</strong>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="margin-top: 8px; font-size: 0.9rem; color: #666;">
+                <strong>ID:</strong> <code>{{ entity.entity_name }}</code>
+                {% if entity.room %} | <strong>Room:</strong> {{ entity.room }}{% endif %}
+                {% if entity.icon %} | <strong>Icon:</strong> {{ entity.icon }}{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div
+        style="background: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
+        <h4 style="margin-top: 0; color: #155724;">✅ Ready to Create Device</h4>
+        <p style="margin: 0; color: #155724;">
+            Click "Create Device" to save this configuration and generate your ESP32 firmware.
+            You'll be able to download the YAML file and flash it to your ESP32 in the next step.
+        </p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div style="display: flex; justify-content: space-between; margin-top: 30px;">
+            <a href="{% url 'wizard_step4_entities' %}" class="btn">← Back</a>
+            <button type="submit" class="btn btn-success" style="font-size: 1.1rem; padding: 12px 30px;">
+                ✅ Create Device & Generate Firmware
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

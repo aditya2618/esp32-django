@@ -33,12 +33,27 @@ class Entity(models.Model):
         ("fan", "Fan"),
         ("sensor", "Sensor"),
         ("binary_sensor", "Binary Sensor"),
+        ("cover", "Cover/Blind"),
+        ("climate", "Climate/Thermostat"),
+        ("lock", "Lock"),
+        ("button", "Button"),
     )
     
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='entities')
     entity_name = models.CharField(max_length=50, help_text="Entity name (e.g., living_room_fan)")
     entity_type = models.CharField(max_length=20, choices=ENTITY_TYPES)
     gpio_pin = models.IntegerField(null=True, blank=True, help_text="GPIO pin number (if applicable)")
+    
+    # Metadata for external app integration
+    friendly_name = models.CharField(max_length=100, blank=True, help_text="Display name (e.g., Living Room Fan)")
+    icon = models.CharField(max_length=50, blank=True, help_text="Material Design Icon (e.g., mdi:fan)")
+    room = models.CharField(max_length=50, blank=True, help_text="Room location (e.g., Living Room)")
+    device_class = models.CharField(max_length=50, blank=True, help_text="Device class for sensors (e.g., temperature, humidity)")
+    unit_of_measurement = models.CharField(max_length=20, blank=True, help_text="Unit for sensors (e.g., °C, %)")
+    attributes = models.JSONField(default=dict, blank=True, help_text="Additional metadata")
+    enabled = models.BooleanField(default=True, help_text="Enable/disable entity")
+    
+    # State tracking
     state = models.CharField(max_length=50, blank=True)
     last_updated = models.DateTimeField(null=True, blank=True)
     
@@ -64,6 +79,39 @@ class Entity(models.Model):
         self.state = new_state
         self.last_updated = timezone.now()
         self.save(update_fields=['state', 'last_updated'])
+    
+    def get_friendly_name(self):
+        """Get friendly name or generate from entity_name"""
+        if self.friendly_name:
+            return self.friendly_name
+        return self.entity_name.replace('_', ' ').title()
+    
+    def get_icon(self):
+        """Get icon or default based on entity type"""
+        if self.icon:
+            return self.icon
+        
+        # Default icons by entity type
+        default_icons = {
+            'switch': 'mdi:light-switch',
+            'light': 'mdi:lightbulb',
+            'fan': 'mdi:fan',
+            'sensor': 'mdi:thermometer',
+            'binary_sensor': 'mdi:motion-sensor',
+            'cover': 'mdi:window-shutter',
+            'climate': 'mdi:thermostat',
+            'lock': 'mdi:lock',
+            'button': 'mdi:gesture-tap-button',
+        }
+        return default_icons.get(self.entity_type, 'mdi:help-circle')
+    
+    def is_controllable(self):
+        """Check if entity can receive commands"""
+        return self.entity_type in ['switch', 'light', 'fan', 'cover', 'climate', 'lock']
+    
+    def is_sensor(self):
+        """Check if entity is a sensor"""
+        return self.entity_type in ['sensor', 'binary_sensor']
 
 
 class GPIOMapping(models.Model):

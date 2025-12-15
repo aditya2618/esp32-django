@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+
+{% block title %}Setup Complete!{% endblock %}
+
+{% block extra_head %}
+<style>
+    .success-banner {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 40px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .yaml-container {
+        background: #2c3e50;
+        color: #ecf0f1;
+        padding: 20px;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        max-height: 400px;
+        overflow-y: auto;
+        margin: 20px 0;
+    }
+
+    .option-card {
+        padding: 25px;
+        border-radius: 12px;
+        height: 100%;
+    }
+
+    .option-recommended {
+        background: #e8f5e9;
+        border: 3px solid #28a745;
+    }
+
+    .option-manual {
+        background: #f8f9fa;
+        border: 2px solid #ddd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 1100px; margin: 20px auto;">
+    <!-- Success Banner -->
+    <div class="success-banner">
+        <h1 style="font-size: 3rem; margin: 0 0 15px 0;">🎉 Configuration Complete!</h1>
+        <p style="font-size: 1.3rem; margin: 0;">
+            Your ESP32 device <strong>{{ device.name }}</strong> is ready to flash!
+        </p>
+    </div>
+
+    <!-- Compilation Status Messages -->
+    <div id="compilationStatus"
+        style="display: none; background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #ffc107;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div class="spinner"
+                style="width: 24px; height: 24px; border: 4px solid #f3f3f3; border-top: 4px solid #ffc107; border-radius: 50%; animation: spin 1s linear infinite;">
+            </div>
+            <div>
+                <strong style="font-size: 1.1rem; color: #856404;">⚙️ Compiling Firmware...</strong>
+                <p style="margin: 5px 0 0 0; font-size: 0.95rem; color: #856404;">
+                    This may take 2-3 minutes. Please wait and don't close this page.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div id="successMessage"
+        style="display: none; background: #d4edda; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745; margin-bottom: 25px;">
+        <strong style="color: #155724; font-size: 1.1rem;">✅ Compilation Successful!</strong>
+        <p style="color: #155724; margin: 10px 0 0 0;">
+            Your firmware is ready! Download the .bin file below and use ESPHome Web Flasher to flash your ESP32.
+        </p>
+    </div>
+
+    <!-- Error Message -->
+    <div id="errorMessage"
+        style="display: none; background: #f8d7da; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; margin-bottom: 25px;">
+        <strong style="color: #721c24; font-size: 1.1rem;">❌ Compilation Failed</strong>
+        <p style="color: #721c24; margin: 10px 0 0 0;" id="errorDetails">
+            Please check the error details below and try again.
+        </p>
+    </div>
+
+    <h2>📥 Choose Your Flashing Method</h2>
+    <p style="color: #666; margin-bottom: 20px;">
+        Select how you want to flash your ESP32 device:
+    </p>
+
+    <!-- ESP32 Connection Status -->
+    <div id="connectionStatus"
+        style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #6c757d;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="statusIndicator" style="width: 12px; height: 12px; border-radius: 50%; background: #6c757d;"></div>
+            <strong>ESP32 Connection:</strong>
+            <span id="statusText">Checking...</span>
+            <button onclick="checkConnection()" class="btn btn-small" style="margin-left: auto;">🔄 Refresh</button>
+        </div>
+        <div id="portInfo" style="margin-top: 10px; font-size: 0.9rem; color: #666; display: none;"></div>
+    </div>
+
+    <!-- Connection Instructions -->
+    <details id="connectionInstructions"
+        style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <summary style="cursor: pointer; font-weight: 600; color: #1976d2; font-size: 1.1rem;">
+            📖 How to Connect Your ESP32 to Computer
+        </summary>
+        <div style="margin-top: 15px; color: #0d47a1; line-height: 1.6;">
+            <p><strong>Step 1: Get the Right Cable</strong></p>
+            <p style="margin-left: 20px;">• Use a <strong>micro-USB</strong> or <strong>USB-C</strong> cable (depending
+                on your ESP32 model)<br>
+                • Make sure it's a <strong>data cable</strong>, not just a charging cable</p>
+
+            <p style="margin-top: 15px;"><strong>Step 2: Connect to Computer</strong></p>
+            <p style="margin-left: 20px;">• Plug the USB cable into your ESP32 board<br>
+                • Plug the other end into your computer's USB port<br>
+                • You should see a small LED light up on the ESP32</p>
+
+            <p style="margin-top: 15px;"><strong>Step 3: Install Drivers (Windows Only)</strong></p>
+            <p style="margin-left: 20px;">If Windows doesn't automatically detect the device, install the appropriate
+                driver:</p>
+            <ul style="margin-left: 40px;">
+                <li><strong>CP2102/CP210x chip:</strong> <a
+                        href="https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers" target="_blank"
+                        style="color: #1976d2;">Download from Silicon Labs</a></li>
+                <li><strong>CH340/CH341 chip:</strong> <a href="http://www.wch.cn/downloads/CH341SER_ZIP.html"
+                        target="_blank" style="color: #1976d2;">Download from WCH</a></li>
+            </ul>
+
+            <p style="margin-top: 15px;"><strong>Step 4: Verify Connection</strong></p>
+            <p style="margin-left: 20px;">• Open <strong>Device Manager</strong> (Windows Key + X → Device Manager)<br>
+                • Expand <strong>"Ports (COM & LPT)"</strong><br>
+                • You should see something like: <code>USB-SERIAL CH340 (COM3)</code> or
+                <code>Silicon Labs CP210x (COM4)</code>
+            </p>
+
+            <p style="margin-top: 15px;"><strong>Step 5: Check Status Above</strong></p>
+            <p style="margin-left: 20px;">• The connection indicator above should turn <span
+                    style="color: #28a745; font-weight: 600;">🟢 GREEN</span> when ESP32 is detected<br>
+                • If it's <span style="color: #dc3545; font-weight: 600;">🔴 RED</span>, try unplugging and replugging
+                the USB cable</p>
+
+            <div
+                style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-top: 15px; border-left: 3px solid #ffc107;">
+                <strong>💡 Troubleshooting:</strong><br>
+                • Try a different USB cable<br>
+                • Try a different USB port on your computer<br>
+                • Make sure the cable supports data transfer (not just charging)<br>
+                • Restart your computer after installing drivers
+            </div>
+        </div>
+    </details>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+        <!-- Option 1: Compile and Flash via Web -->
+        <div class="option-card option-recommended">
+            <h3 style="margin-top: 0; color: #155724;">🚀 Option 1: Flash via Web (Recommended)</h3>
+            <p style="color: #155724; margin-bottom: 15px;">
+                Compile firmware here and flash directly from your browser!
+            </p>
+            <ul style="color: #155724; margin-bottom: 20px;">
+                <li>✅ No software installation needed</li>
+                <li>✅ Flash directly via USB in browser</li>
+                <li>✅ Works on Chrome/Edge</li>
+                <li>✅ Fastest method</li>
+            </ul>
+
+            {% if firmware_result %}
+            {% if firmware_result.success %}
+            <div style="background: #d4edda; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <strong>✅ Firmware Compiled!</strong>
+            </div>
+            <a href="{{ firmware_result.bin_url }}" class="btn btn-success" style="width: 100%; margin-bottom: 10px;">
+                📥 Download Firmware (.bin)
+            </a>
+            <a href="https://web.esphome.io/" target="_blank" class="btn"
+                style="width: 100%; background: #6c757d; color: white;">
+                🌐 Open Web Flasher
+            </a>
+            <p style="font-size: 0.85rem; color: #666; margin-top: 10px;">
+                1. Download .bin file above<br>
+                2. Open Web Flasher<br>
+                3. Connect ESP32 via USB<br>
+                4. Upload and flash
+            </p>
+            {% else %}
+            <div style="background: #f8d7da; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <strong>❌ Compilation Failed</strong>
+                <details style="margin-top: 10px;">
+                    <summary style="cursor: pointer;">View Logs</summary>
+                    <pre
+                        style="background: #2c3e50; color: #ecf0f1; padding: 10px; border-radius: 4px; max-height: 150px; overflow-y: auto; font-size: 0.75rem;">{{ firmware_result.logs }}</pre>
+                </details>
+            </div>
+            <a href="?compile=true" class="btn btn-warning" style="width: 100%;">
+                🔄 Retry
+            </a>
+            {% endif %}
+            {% else %}
+            <a href="?compile=true" class="btn btn-success" style="width: 100%; font-size: 1.1rem;">
+                ⚡ Compile Firmware Now
+            </a>
+            <p style="font-size: 0.85rem; color: #666; margin-top: 10px; text-align: center;">
+                Takes 2-5 minutes
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Option 2: Manual -->
+        <div class="option-card option-manual">
+            <h3 style="margin-top: 0; color: #2c3e50;">📝 Option 2: Manual ESPHome CLI</h3>
+            <p style="color: #666; margin-bottom: 15px;">
+                Download YAML and use ESPHome on your computer
+            </p>
+            <ul style="color: #666; margin-bottom: 20px;">
+                <li>Full control</li>
+                <li>Detailed logs</li>
+                <li>For advanced users</li>
+            </ul>
+            <a href="{% url 'generate_yaml' device.id %}" class="btn" style="width: 100%; margin-bottom: 10px;">
+                📥 Download YAML
+            </a>
+            <button onclick="copyYaml()" class="btn" style="width: 100%; background: #6c757d; color: white;">
+                📋 Copy YAML
+            </button>
+        </div>
+    </div>
+
+    <!-- YAML Preview -->
+    <details {% if not firmware_result %}open{% endif %}>
+        <summary style="cursor: pointer; font-weight: 600; font-size: 1.1rem; margin-bottom: 15px;">
+            👁️ Preview YAML Configuration
+        </summary>
+        <div class="yaml-container" id="yaml-content">{{ yaml_content }}</div>
+    </details>
+
+    {% if not firmware_result or not firmware_result.success %}
+    <h3 style="margin-top: 40px;">📖 Manual Flashing Instructions</h3>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+        <p><strong>1.</strong> Install ESPHome: <code>pip install esphome</code></p>
+        <p><strong>2.</strong> Save YAML file</p>
+        <p><strong>3.</strong> Connect ESP32 via USB</p>
+        <p><strong>4.</strong> Run: <code>esphome run {{ device.node_name }}.yaml</code></p>
+    </div>
+    {% endif %}
+
+    <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 30px 0;">
+        <h3 style="margin-top: 0;">📡 MQTT Topics for Your App</h3>
+        <p>Your smart home app should subscribe to:</p>
+        <ul style="font-family: 'Courier New', monospace; font-size: 0.9rem;">
+            <li><strong>State:</strong> home/{{ device.home_id }}/{{ device.node_name }}/#</li>
+            <li><strong>Command:</strong> home/{{ device.home_id }}/{{ device.node_name }}/+/+/command</li>
+        </ul>
+        <a href="{% url 'device_detail' device.id %}" class="btn" style="margin-top: 10px;">
+            View All Topics →
+        </a>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; padding-top: 30px; border-top: 2px solid #ddd;">
+        <h3>What's Next?</h3>
+        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
+            <a href="{% url 'wizard_start' %}" class="btn btn-success">
+                ➕ Configure Another Device
+            </a>
+            <a href="{% url 'device_detail' device.id %}" class="btn">
+                📱 View Device Details
+            </a>
+            <a href="{% url 'dashboard' %}" class="btn">
+                🏠 Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+<script>
+    function copyYaml() {
+        const yamlContent = document.getElementById('yaml-content').textContent;
+        navigator.clipboard.writeText(yamlContent).then(function () {
+            alert('YAML copied to clipboard!');
+        }, function (err) {
+            alert('Failed to copy: ' + err);
+        });
+    }
+
+    // Compile firmware with visual feedback
+    function compileFirmware() {
+        const statusDiv = document.getElementById('compilationStatus');
+        const resultDiv = document.getElementById('compilationResult');
+        const compileBtn = document.getElementById('compileBtn');
+        const successMsg = document.getElementById('successMessage');
+        const errorMsg = document.getElementById('errorMessage');
+
+        // Show loading state
+        statusDiv.style.display = 'block';
+        resultDiv.style.display = 'none';
+        compileBtn.disabled = true;
+        compileBtn.textContent = '⏳ Compiling...';
+        compileBtn.style.opacity = '0.6';
+
+        // Redirect to trigger compilation
+        window.location.href = '?compile=true';
+    }
+
+    // Check if compilation was triggered
+    window.addEventListener('DOMContentLoaded', function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const compiling = urlParams.get('compile') === 'true';
+
+        if (compiling) {
+            const statusDiv = document.getElementById('compilationStatus');
+            const compileBtn = document.getElementById('compileBtn');
+
+            statusDiv.style.display = 'block';
+            compileBtn.disabled = true;
+            compileBtn.textContent = '⏳ Compiling...';
+            compileBtn.style.opacity = '0.6';
+
+            // Check for compilation result in messages
+            {% if firmware_result %}
+            setTimeout(function () {
+                statusDiv.style.display = 'none';
+                const resultDiv = document.getElementById('compilationResult');
+                resultDiv.style.display = 'block';
+
+                {% if firmware_result.success %}
+                document.getElementById('successMessage').style.display = 'block';
+                compileBtn.textContent = '✅ Compiled Successfully';
+                compileBtn.style.background = '#28a745';
+                {% else %}
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorDetails').textContent = '{{ firmware_result.error|escapejs }}';
+                compileBtn.disabled = false;
+                compileBtn.textContent = '🔄 Try Again';
+                compileBtn.style.opacity = '1';
+                {% endif %}
+            }, 500);
+            {% endif %}
+        }
+    });
+</script>
+
+{% include 'wizard/connection_check.js' %}
+{% endblock %}

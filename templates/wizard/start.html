@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Device Setup Wizard - Start{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 40px auto;">
+    <div style="text-align: center; padding: 40px 20px;">
+        <h1 style="font-size: 2.5rem; margin-bottom: 20px;">🚀 ESP32 Device Setup Wizard</h1>
+        <p style="font-size: 1.2rem; color: #666; margin-bottom: 40px;">
+            Configure your ESP32 device step-by-step in just a few minutes!
+        </p>
+        
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 8px; margin-bottom: 30px; text-align: left;">
+            <h3 style="margin-bottom: 20px;">📋 What you'll configure:</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li style="padding: 10px 0; border-bottom: 1px solid #ddd;">
+                    <strong>Step 1:</strong> Device Information (Name, Home ID, Node Name)
+                </li>
+                <li style="padding: 10px 0; border-bottom: 1px solid #ddd;">
+                    <strong>Step 2:</strong> WiFi Connection (SSID, Password)
+                </li>
+                <li style="padding: 10px 0; border-bottom: 1px solid #ddd;">
+                    <strong>Step 3:</strong> MQTT Broker (Server Address, Port)
+                </li>
+                <li style="padding: 10px 0; border-bottom: 1px solid #ddd;">
+                    <strong>Step 4:</strong> Add Entities (Lights, Switches, Fans, Sensors)
+                </li>
+                <li style="padding: 10px 0; border-bottom: 1px solid #ddd;">
+                    <strong>Step 5:</strong> Review Configuration
+                </li>
+                <li style="padding: 10px 0;">
+                    <strong>Step 6:</strong> Download Firmware & Flash Instructions
+                </li>
+            </ul>
+        </div>
+        
+        <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+            <p style="margin: 0; color: #1976d2;">
+                <strong>💡 Tip:</strong> Have your WiFi password and MQTT broker details ready before starting.
+            </p>
+        </div>
+        
+        <a href="{% url 'wizard_step1_device_info' %}" class="btn btn-success" style="font-size: 1.2rem; padding: 15px 40px;">
+            Start Setup Wizard →
+        </a>
+        
+        <div style="margin-top: 30px;">
+            <a href="{% url 'dashboard' %}" style="color: #666; text-decoration: none;">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

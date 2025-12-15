@@ -135,6 +135,9 @@ MQTT_PORT = 1883
 MQTT_USERNAME = None  # Set if using authentication
 MQTT_PASSWORD = None  # Set if using authentication
 
+# Site URL for firmware flashing
+SITE_URL = 'http://localhost:8000'  # Change to your actual domain in production
+
 # Logging
 LOGGING = {
     'version': 1,

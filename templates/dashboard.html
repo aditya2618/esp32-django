@@ -5,7 +5,8 @@
 {% block content %}
 <div class="card">
     <h2>📊 Dashboard</h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
         <div style="background: #e3f2fd; padding: 20px; border-radius: 8px;">
             <h3 style="margin-bottom: 5px;">{{ total_devices }}</h3>
             <p style="color: #666;">Total Devices</p>
@@ -19,7 +20,12 @@
             <p style="color: #666;">Offline</p>
         </div>
     </div>
-    <a href="{% url 'add_device' %}" class="btn btn-success">+ Add New Device</a>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="{% url 'wizard_start' %}" class="btn btn-success" style="font-size: 1.1rem;">
+            🚀 Setup New Device (Wizard)
+        </a>
+        <a href="{% url 'add_device' %}" class="btn">+ Quick Add Device</a>
+    </div>
 </div>
 
 <div class="card">
@@ -61,6 +67,8 @@
                 <td>
                     <a href="{% url 'device_detail' device.id %}" class="btn btn-small">View</a>
                     <a href="{% url 'edit_device' device.id %}" class="btn btn-small btn-warning">Edit</a>
+                    <button onclick="confirmDelete({{ device.id }}, '{{ device.name|escapejs }}')" class="btn btn-small"
+                        style="background: #dc3545; color: white;">Delete</button>
                 </td>
             </tr>
             {% endfor %}
