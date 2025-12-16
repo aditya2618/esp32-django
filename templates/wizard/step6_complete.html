@@ -190,21 +190,26 @@
             {% if firmware_result %}
             {% if firmware_result.success %}
             <div style="background: #d4edda; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <strong>✅ Firmware Compiled!</strong>
+                <strong>✅ Firmware Compiled Successfully!</strong>
+                <p style="margin: 10px 0 0 0; font-size: 0.9rem;">ESPHome Web Tools should open automatically. If not,
+                    click the button below.</p>
             </div>
-            <a href="{{ firmware_result.bin_url }}" class="btn btn-success" style="width: 100%; margin-bottom: 10px;">
+            <a href="{{ firmware_result.bin_url }}" class="btn btn-success"
+                style="width: 100%; margin-bottom: 10px; font-size: 1.1rem;">
                 📥 Download Firmware (.bin)
             </a>
             <a href="https://web.esphome.io/" target="_blank" class="btn"
-                style="width: 100%; background: #6c757d; color: white;">
+                style="width: 100%; background: #007bff; color: white; margin-bottom: 10px;">
                 🌐 Open Web Flasher
             </a>
-            <p style="font-size: 0.85rem; color: #666; margin-top: 10px;">
+            <div style="background: #e3f2fd; padding: 12px; border-radius: 6px; font-size: 0.85rem; color: #0d47a1;">
+                <strong>📋 Quick Steps:</strong><br>
                 1. Download .bin file above<br>
-                2. Open Web Flasher<br>
-                3. Connect ESP32 via USB<br>
-                4. Upload and flash
-            </p>
+                2. Connect ESP32 via USB<br>
+                3. In Web Flasher, click "Connect"<br>
+                4. Select your ESP32 port<br>
+                5. Click "Install" → Choose downloaded .bin file
+            </div>
             {% else %}
             <div style="background: #f8d7da; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <strong>❌ Compilation Failed</strong>
@@ -220,10 +225,10 @@
             {% endif %}
             {% else %}
             <a href="?compile=true" class="btn btn-success" style="width: 100%; font-size: 1.1rem;">
-                ⚡ Compile Firmware Now
+                ⚡ Compile & Open Web Flasher
             </a>
             <p style="font-size: 0.85rem; color: #666; margin-top: 10px; text-align: center;">
-                Takes 2-5 minutes
+                Compiles firmware (2-5 min) and opens ESPHome Web Tools
             </p>
             {% endif %}
         </div>
@@ -245,6 +250,47 @@
             <button onclick="copyYaml()" class="btn" style="width: 100%; background: #6c757d; color: white;">
                 📋 Copy YAML
             </button>
+        </div>
+
+        <!-- Option 3: CLI Flash -->
+        <div class="option-card" style="border: 2px solid #17a2b8;">
+            <h3 style="margin-top: 0; color: #2c3e50;">🔌 Option 3: Flash via USB (CLI)</h3>
+            <p style="color: #666; margin-bottom: 15px;">
+                Compile and flash directly via USB using ESPHome CLI
+            </p>
+            <ul style="color: #666; margin-bottom: 20px;">
+                <li>One-click compile & flash</li>
+                <li>Direct USB connection</li>
+                <li>Real-time logs</li>
+            </ul>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 600;">Select USB Port:</label>
+                <select id="flash-port-select" class="form-control" style="margin-bottom: 10px;">
+                    <option value="">Detecting ports...</option>
+                </select>
+                <button onclick="detectFlashPorts()" class="btn"
+                    style="width: 100%; background: #6c757d; color: white; margin-bottom: 10px;">
+                    🔄 Refresh Ports
+                </button>
+            </div>
+
+            <button onclick="flashViaCLI()" class="btn btn-info" style="width: 100%; font-size: 1.1rem;"
+                id="flash-cli-btn">
+                ⚡ Compile & Flash via USB
+            </button>
+
+            <div id="flash-cli-logs" style="display: none; margin-top: 15px;">
+                <h4 style="margin-bottom: 10px;">📋 Flash Logs:</h4>
+                <pre id="flash-cli-output"
+                    style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 4px; max-height: 400px; overflow-y: auto; font-size: 0.85rem;"></pre>
+            </div>
+
+            <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-top: 15px; font-size: 0.85rem;">
+                <strong>⚠️ Requirements:</strong><br>
+                • ESP32/ESP8266 connected via USB<br>
+                • ESPHome installed: <code>pip install esphome</code>
+            </div>
         </div>
     </div>
 
@@ -384,13 +430,29 @@
         if (resultDiv) resultDiv.style.display = 'block';
 
         {% if firmware_result.success %}
-        console.log('Compilation successful!');
+        console.log('Compilation successful!')
         const successMsg = document.getElementById('successMessage');
         if (successMsg) successMsg.style.display = 'block';
         if (compileBtn) {
             compileBtn.textContent = '✅ Compiled Successfully';
             compileBtn.style.background = '#28a745';
         }
+
+        // Auto-open ESPHome Web Tools for flashing
+        setTimeout(function () {
+            console.log('Opening ESPHome Web Tools...');
+            window.open('https://web.esphome.io/', '_blank');
+
+            // Show instruction to user
+            alert('✅ Firmware compiled successfully!\n\n' +
+                '📥 Download the .bin file below\n' +
+                '🌐 ESPHome Web Tools is opening in a new tab\n\n' +
+                'Steps:\n' +
+                '1. Connect your ESP32 via USB\n' +
+                '2. Click "Connect" in the web flasher\n' +
+                '3. Select your ESP32 device\n' +
+                '4. Click "Install" and choose the downloaded .bin file');
+        }, 1000);
         {% else %}
         console.log('Compilation failed:', '{{ firmware_result.error|escapejs }}');
         const errorMsg = document.getElementById('errorMessage');
@@ -409,6 +471,104 @@
     {% endif %}
         }
     });
+
+    // Option 3: CLI Flash Functions
+    function detectFlashPorts() {
+        const select = document.getElementById('flash-port-select');
+        select.innerHTML = '<option value="">Detecting ports...</option>';
+
+        fetch('/api/detect-flash-ports/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.ports.length > 0) {
+                    select.innerHTML = '<option value="">Select a port...</option>';
+                    data.ports.forEach(port => {
+                        const option = document.createElement('option');
+                        option.value = port.port;
+                        option.textContent = `${port.port} - ${port.description}`;
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">No ESP devices found</option>';
+                    alert('No ESP32/ESP8266 devices detected. Please connect your device via USB.');
+                }
+            })
+            .catch(error => {
+                console.error('Error detecting ports:', error);
+                select.innerHTML = '<option value="">Error detecting ports</option>';
+            });
+    }
+
+    function flashViaCLI() {
+        const port = document.getElementById('flash-port-select').value;
+        const logsDiv = document.getElementById('flash-cli-logs');
+        const outputPre = document.getElementById('flash-cli-output');
+        const flashBtn = document.getElementById('flash-cli-btn');
+
+        if (!port) {
+            alert('Please select a USB port first');
+            return;
+        }
+
+        // Show logs and update button
+        logsDiv.style.display = 'block';
+        outputPre.textContent = 'Starting compilation and flash...\n';
+        flashBtn.disabled = true;
+        flashBtn.textContent = '⏳ Compiling & Flashing...';
+
+        // Get CSRF token from cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // Flash firmware
+        fetch('/api/flash-cli/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `device_id={{ device.id }}&port=${encodeURIComponent(port)}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                outputPre.textContent = data.logs || 'No logs available';
+
+                if (data.success) {
+                    alert('✅ Firmware compiled and flashed successfully!\n\nYour ESP32/ESP8266 should now be running the new firmware.');
+                    flashBtn.textContent = '✅ Flash Complete';
+                    flashBtn.style.background = '#28a745';
+                } else {
+                    alert('❌ Flash failed. Check the logs below for details.');
+                    flashBtn.textContent = '❌ Flash Failed - Try Again';
+                    flashBtn.style.background = '#dc3545';
+                }
+
+                flashBtn.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error flashing firmware:', error);
+                outputPre.textContent += `\n\nError: ${error.message}`;
+                alert('Error during flash operation. Check logs.');
+                flashBtn.disabled = false;
+                flashBtn.textContent = '❌ Error - Try Again';
+            });
+    }
+
+    // Auto-detect ports on page load
+    detectFlashPorts();
 </script>
 
 {% include 'wizard/connection_check.js' %}

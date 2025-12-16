@@ -67,7 +67,10 @@ class FirmwareBuilder:
                 esphome_name = self.device.node_name.replace('_', '-')
                 
                 # Find the compiled .bin file - try multiple possible locations
+                # Prefer firmware.factory.bin (complete image with bootloader+partitions)
                 possible_paths = [
+                    self.build_dir / '.esphome' / 'build' / esphome_name / '.pioenvs' / esphome_name / 'firmware.factory.bin',
+                    self.build_dir / '.esphome' / 'build' / self.device.node_name / '.pioenvs' / self.device.node_name / 'firmware.factory.bin',
                     self.build_dir / '.esphome' / 'build' / esphome_name / '.pioenvs' / esphome_name / 'firmware.bin',
                     self.build_dir / '.esphome' / 'build' / self.device.node_name / '.pioenvs' / self.device.node_name / 'firmware.bin',
                     self.build_dir / '.esphome' / 'build' / esphome_name / 'firmware.bin',
@@ -120,13 +123,20 @@ class FirmwareBuilder:
         bin_url = settings.MEDIA_URL + f'esphome_builds/{self.device.node_name}/firmware.bin'
         return bin_url
     
-    def create_manifest(self, bin_path):
+    def create_manifest(self, bin_path, platform='esp32'):
         """
         Create manifest.json for ESPHome Web Tools
         
         This allows web-based flashing via https://web.esphome.io/
+        
+        Args:
+            bin_path: Path to firmware.bin file
+            platform: 'esp32' or 'esp8266'
         """
         import json
+        
+        # Determine chip family for manifest
+        chip_family = "ESP8266" if platform.lower() == 'esp8266' else "ESP32"
         
         manifest = {
             "name": self.device.name,
@@ -135,7 +145,7 @@ class FirmwareBuilder:
             "new_install_prompt_erase": True,
             "builds": [
                 {
-                    "chipFamily": "ESP32",
+                    "chipFamily": chip_family,
                     "parts": [
                         {
                             "path": f"firmware.bin",
@@ -153,13 +163,14 @@ class FirmwareBuilder:
         return manifest_path
 
 
-def compile_and_prepare_firmware(device, yaml_content):
+def compile_and_prepare_firmware(device, yaml_content, platform='esp32'):
     """
     Compile firmware and prepare for flashing
     
     Args:
         device: Device instance
         yaml_content: ESPHome YAML configuration
+        platform: 'esp32' or 'esp8266' (default: 'esp32')
     
     Returns:
         dict: {
@@ -181,15 +192,25 @@ def compile_and_prepare_firmware(device, yaml_content):
     if success:
         # Copy the .bin file to a predictable location for download
         import shutil
-        dest_bin = builder.build_dir / 'firmware.bin'
+        
+        # Use firmware.factory.bin if available (contains bootloader+partitions+app)
+        # Otherwise fall back to firmware.bin
+        source_path = Path(bin_path)
+        if 'firmware.factory.bin' in str(bin_path):
+            dest_bin = builder.build_dir / 'firmware.factory.bin'
+            bin_filename = 'firmware.factory.bin'
+        else:
+            dest_bin = builder.build_dir / 'firmware.bin'
+            bin_filename = 'firmware.bin'
+            
         shutil.copy2(bin_path, dest_bin)
         logger.info(f"Copied firmware from {bin_path} to {dest_bin}")
         
-        # Create manifest for web flashing
-        builder.create_manifest(str(dest_bin))
+        # Create manifest for web flashing with correct platform
+        builder.create_manifest(str(dest_bin), platform=platform)
         
         # Get URLs - use the copied file location
-        bin_url = f"{settings.MEDIA_URL}esphome_builds/{device.node_name}/firmware.bin"
+        bin_url = f"{settings.MEDIA_URL}esphome_builds/{device.node_name}/{bin_filename}"
         web_flasher_url = f"https://web.esphome.io/?configuration={settings.SITE_URL}{bin_url}"
         
         return {

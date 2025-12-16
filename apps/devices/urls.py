@@ -50,4 +50,13 @@ urlpatterns = [
     # ESPHome YAML generation
     path('device/<int:device_id>/yaml/download/', views.generate_yaml, name='generate_yaml'),
     path('device/<int:device_id>/yaml/view/', views.view_yaml, name='view_yaml'),
+    
+    # ESP32 Flash Reading
+    path('api/detect-ports/', views.detect_ports, name='detect_ports'),
+    path('api/read-flash/', views.read_flash, name='read_flash'),
+    path('api/read-serial-config/', views.read_serial_config, name='read_serial_config'),
+    
+    # ESPHome CLI Flashing (Option 3)
+    path('api/detect-flash-ports/', views.detect_flash_ports, name='detect_flash_ports'),
+    path('api/flash-cli/', views.flash_firmware_cli, name='flash_firmware_cli'),
 ]

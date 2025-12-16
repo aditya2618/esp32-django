@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_http_methods
 from .models import Device, Entity, GPIOMapping, Firmware, OTAStatus
 from .forms import (
     DeviceForm, EntityForm, GPIOMappingForm, EntityControlForm,
@@ -8,6 +9,9 @@ from .forms import (
 )
 from .services import send_command, push_gpio_mapping, trigger_ota, trigger_factory_reset
 from .esphome_generator import generate_esphome_yaml, generate_gpio_mapping_yaml
+from .flash_reader import detect_esp32_ports, read_esp32_info
+from .serial_monitor import read_serial_output, trigger_esp32_reboot
+from .esphome_flash import detect_esp_ports, compile_and_flash
 from .constants import ESP32_RESERVED_PINS
 
 
@@ -363,3 +367,140 @@ def view_yaml(request, device_id):
         'yaml_content': yaml_content,
     }
     return render(request, 'view_yaml.html', context)
+
+
+@require_http_methods(["GET"])
+def detect_ports(request):
+    """
+    Detect available ESP32 ports via AJAX.
+    
+    Returns JSON with list of detected ports.
+    """
+    try:
+        ports = detect_esp32_ports()
+        return JsonResponse({
+            'success': True,
+            'ports': ports
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@require_http_methods(["POST"])
+def read_flash(request):
+    """
+    Read ESP32 flash information via AJAX.
+    
+    Expects POST data:
+        - port: COM port or 'auto'
+    
+    Returns JSON with flash info.
+    """
+    try:
+        port = request.POST.get('port', 'auto')
+        info = read_esp32_info(port)
+        
+        return JsonResponse(info)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@require_http_methods(["POST"])
+def read_serial_config(request):
+    """
+    Read ESP32 configuration from serial output.
+    
+    Expects POST data:
+        - port: COM port
+        - reboot: 'true' to reboot ESP32 first
+    
+    Returns JSON with configuration info.
+    """
+    try:
+        port = request.POST.get('port')
+        should_reboot = request.POST.get('reboot', 'false') == 'true'
+        
+        if not port or port == 'auto':
+            return JsonResponse({
+                'success': False,
+                'error': 'Please select a specific COM port'
+            })
+        
+        # Optionally reboot ESP32 to get fresh logs
+        if should_reboot:
+            trigger_esp32_reboot(port)
+            import time
+            time.sleep(2)  # Wait for reboot
+        
+        # Read serial output (15 seconds to capture full boot)
+        config = read_serial_output(port, duration=15)
+        
+        return JsonResponse(config)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@require_http_methods(["GET"])
+def detect_flash_ports(request):
+    """Detect connected ESP32/ESP8266 devices for CLI flashing"""
+    try:
+        ports = detect_esp_ports()
+        return JsonResponse({
+            'success': True,
+            'ports': ports
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'ports': []
+        })
+
+
+@require_http_methods(["POST"])
+def flash_firmware_cli(request):
+    """Flash firmware using ESPHome CLI (Option 3)"""
+    try:
+        device_id = request.POST.get('device_id')
+        port = request.POST.get('port')
+        
+        if not device_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Device ID is required'
+            })
+        
+        device = get_object_or_404(Device, id=device_id)
+        
+        # Build path to YAML file
+        from pathlib import Path
+        from django.conf import settings
+        
+        yaml_path = Path(settings.MEDIA_ROOT) / 'esphome_builds' / device.node_name / f'{device.node_name}.yaml'
+        
+        if not yaml_path.exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'YAML file not found: {yaml_path}'
+            })
+        
+        # Compile and flash using ESPHome CLI
+        result = compile_and_flash(yaml_path, port)
+        
+        return JsonResponse(result)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'logs': ''
+        })

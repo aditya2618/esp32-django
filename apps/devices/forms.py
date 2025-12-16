@@ -1,19 +1,34 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import Device, Entity, GPIOMapping, Firmware, OTAStatus
-from .validators import validate_gpio_pin, validate_unique_gpio
+from .validators import validate_gpio_pin, validate_unique_gpio, validate_entity_name
 
 
 class DeviceForm(forms.ModelForm):
     """Form for creating/editing devices"""
+    
+    PLATFORM_CHOICES = [
+        ('esp32', 'ESP32'),
+        ('esp8266', 'ESP8266'),
+    ]
+    
+    platform = forms.ChoiceField(
+        choices=PLATFORM_CHOICES,
+        initial='esp32',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Select your device platform',
+        required=False  # Not a model field, stored in session
+    )
+    
     class Meta:
         model = Device
-        fields = ['home_id', 'name', 'node_name']
+        fields = ['home_id', 'name', 'node_name']  # platform is NOT a model field
         widgets = {
             'home_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., home1'}),
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Living Room'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Living Room Controller'}),
             'node_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., home1_livingroom_node1'}),
         }
+
 
 
 class EntityForm(forms.ModelForm):
@@ -22,7 +37,12 @@ class EntityForm(forms.ModelForm):
         model = Entity
         fields = ['entity_name', 'entity_type', 'gpio_pin']
         widgets = {
-            'entity_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., living_room_fan'}),
+            'entity_name': forms.TextInput(attrs={
+                'class': 'form-control', 
+                'placeholder': 'e.g., living_room_fan',
+                'pattern': '[a-zA-Z_][a-zA-Z0-9_]*',
+                'title': 'Must start with letter/underscore, contain only letters, numbers, and underscores'
+            }),
             'entity_type': forms.Select(attrs={'class': 'form-control'}),
             'gpio_pin': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'GPIO pin (optional)', 'min': 0, 'max': 39}),
         }
@@ -33,6 +53,14 @@ class EntityForm(forms.ModelForm):
         
         # Make gpio_pin optional for sensors
         self.fields['gpio_pin'].required = False
+    
+    def clean_entity_name(self):
+        entity_name = self.cleaned_data.get('entity_name')
+        
+        # Validate entity name
+        validate_entity_name(entity_name)
+        
+        return entity_name
     
     def clean_gpio_pin(self):
         gpio_pin = self.cleaned_data.get('gpio_pin')

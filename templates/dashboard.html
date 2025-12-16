@@ -25,6 +25,164 @@
             🚀 Setup New Device (Wizard)
         </a>
         <a href="{% url 'add_device' %}" class="btn">+ Quick Add Device</a>
+        <button onclick="openFlashReader()" class="btn" style="background: #007bff; color: white;">
+            🔍 Read Connected ESP32/ESP8266
+        </button>
+    </div>
+</div>
+
+<!-- Enhanced Flash Reader Modal -->
+<div id="flashReaderModal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; overflow-y: auto; padding: 20px;">
+    <div
+        style="background: white; padding: 0; border-radius: 16px; max-width: 900px; width: 100%; max-height: 90vh; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px 30px; color: white;">
+            <h2 style="margin: 0; font-size: 1.5rem;">🔍 ESP32/ESP8266 Device Reader</h2>
+            <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 0.9rem;">Detect, read, and verify your connected
+                devices</p>
+        </div>
+
+        <div style="padding: 30px; overflow-y: auto; max-height: calc(90vh - 150px);">
+
+            <!-- Step 1: Port Selection -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #333;">📡 Step 1: Select Device Port</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="portSelect" class="form-control" style="flex: 1;">
+                        <option value="auto">Auto-detect</option>
+                    </select>
+                    <button onclick="detectPorts()" class="btn"
+                        style="background: #6c757d; color: white; white-space: nowrap;">
+                        🔄 Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Device Detection -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #333;">⚡ Step 2: Detect Device</h3>
+                <button onclick="readFlash()" id="readFlashBtn" class="btn btn-success"
+                    style="width: 100%; font-size: 1rem; padding: 12px;">
+                    🔍 Detect & Read Device Info
+                </button>
+            </div>
+
+            <!-- Device Information Card -->
+            <div id="flashInfo"
+                style="display: none; background: linear-gradient(135deg, #e3f2fd 0%, #e1f5fe 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #2196f3;">
+                <h3 style="margin: 0 0 15px 0; color: #1976d2; font-size: 1.2rem;">📋 Device Information</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div style="background: white; padding: 15px; border-radius: 8px;">
+                        <div style="color: #666; font-size: 0.85rem; margin-bottom: 5px;">Chip Type</div>
+                        <div id="chipType" style="font-weight: 600; font-size: 1.1rem; color: #333;">-</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px;">
+                        <div style="color: #666; font-size: 0.85rem; margin-bottom: 5px;">MAC Address</div>
+                        <div id="macAddress"
+                            style="font-weight: 600; font-size: 1.1rem; color: #333; font-family: monospace;">-</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px;">
+                        <div style="color: #666; font-size: 0.85rem; margin-bottom: 5px;">Flash Size</div>
+                        <div id="flashSize" style="font-weight: 600; font-size: 1.1rem; color: #333;">-</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px;">
+                        <div style="color: #666; font-size: 0.85rem; margin-bottom: 5px;">Port</div>
+                        <div id="portUsed" style="font-weight: 600; font-size: 1.1rem; color: #333;">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Display -->
+            <div id="flashError"
+                style="display: none; background: #f8d7da; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #721c24; border-left: 4px solid #dc3545;">
+                <strong>❌ Error:</strong> <span id="errorMessage"></span>
+            </div>
+
+            <!-- Configuration Section -->
+            <div id="configSection"
+                style="display: none; background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #333;">📋 Step 3: Read Configuration</h3>
+
+                <div
+                    style="background: #fff3cd; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85rem; border-left: 4px solid #ffc107;">
+                    <strong>ℹ️ Requirements:</strong><br>
+                    • ESP32/ESP8266 must have ESPHome firmware installed<br>
+                    • USB cable must support data transfer (not charge-only)<br>
+                    • Takes ~15 seconds to complete<br>
+                    • Device will automatically reboot
+                </div>
+
+                <button onclick="readSerialConfig()" id="readConfigBtn" class="btn"
+                    style="width: 100%; background: #28a745; color: white; font-size: 1rem; padding: 12px;">
+                    🔄 Reboot & Read ESPHome Configuration (15s)
+                </button>
+
+                <!-- Configuration Display -->
+                <div id="configInfo" style="display: none; margin-top: 20px;">
+                    <!-- Tabs -->
+                    <div style="display: flex; gap: 5px; border-bottom: 2px solid #dee2e6; margin-bottom: 15px;">
+                        <button onclick="showConfigTab('overview')" id="tab-overview" class="config-tab"
+                            style="padding: 10px 20px; border: none; background: #007bff; color: white; cursor: pointer; border-radius: 8px 8px 0 0; font-weight: 600;">
+                            Overview
+                        </button>
+                        <button onclick="showConfigTab('entities')" id="tab-entities" class="config-tab"
+                            style="padding: 10px 20px; border: none; background: #e9ecef; color: #495057; cursor: pointer; border-radius: 8px 8px 0 0;">
+                            Entities
+                        </button>
+                        <button onclick="showConfigTab('logs')" id="tab-logs" class="config-tab"
+                            style="padding: 10px 20px; border: none; background: #e9ecef; color: #495057; cursor: pointer; border-radius: 8px 8px 0 0;">
+                            Serial Logs
+                        </button>
+                    </div>
+
+                    <!-- Tab Content: Overview -->
+                    <div id="content-overview" class="config-tab-content"
+                        style="background: white; padding: 20px; border-radius: 8px;">
+                        <div style="display: grid; gap: 15px;">
+                            <div>
+                                <div style="color: #666; font-size: 0.85rem; margin-bottom: 5px;">Device Name</div>
+                                <div id="deviceName" style="font-weight: 600; font-size: 1.2rem; color: #333;">-</div>
+                            </div>
+                            <div id="gpioList">
+                                <div style="color: #666; font-size: 0.85rem; margin-bottom: 10px;">GPIO Pins</div>
+                                <div id="gpioPins" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content: Entities -->
+                    <div id="content-entities" class="config-tab-content"
+                        style="display: none; background: white; padding: 20px; border-radius: 8px;">
+                        <div id="entityList">
+                            <div id="entities" style="display: grid; gap: 10px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content: Logs -->
+                    <div id="content-logs" class="config-tab-content" style="display: none;">
+                        <pre id="serialLogs"
+                            style="background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 0.75rem; margin: 0;"></pre>
+                    </div>
+                </div>
+
+                <!-- Configuration Error -->
+                <div id="configError"
+                    style="display: none; background: #f8d7da; padding: 15px; border-radius: 8px; margin-top: 15px; color: #721c24; border-left: 4px solid #dc3545;">
+                    <strong>❌ Error:</strong> <span id="configErrorMessage"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div
+            style="background: #f8f9fa; padding: 20px 30px; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end;">
+            <button onclick="closeFlashReader()" class="btn"
+                style="background: #6c757d; color: white; padding: 10px 30px;">
+                Close
+            </button>
+        </div>
     </div>
 </div>
 
@@ -101,6 +259,249 @@
             form.action = '/device/' + deviceId + '/delete/';
             form.submit();
         }
+    }
+
+    // Flash Reader Functions
+    function openFlashReader() {
+        document.getElementById('flashReaderModal').style.display = 'flex';
+        detectPorts(); // Auto-detect ports when opening
+    }
+
+    function closeFlashReader() {
+        document.getElementById('flashReaderModal').style.display = 'none';
+        document.getElementById('flashInfo').style.display = 'none';
+        document.getElementById('flashError').style.display = 'none';
+    }
+
+    function detectPorts() {
+        fetch('{% url "detect_ports" %}')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('portSelect');
+                select.innerHTML = '<option value="auto">Auto-detect</option>';
+
+                if (data.success && data.ports.length > 0) {
+                    data.ports.forEach(port => {
+                        const option = document.createElement('option');
+                        option.value = port.port;
+                        option.textContent = `${port.port} - ${port.description}`;
+                        select.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error detecting ports:', error);
+            });
+    }
+
+    function readFlash() {
+        const port = document.getElementById('portSelect').value;
+        const btn = document.getElementById('readFlashBtn');
+        const flashInfo = document.getElementById('flashInfo');
+        const flashError = document.getElementById('flashError');
+
+        // Hide previous results
+        flashInfo.style.display = 'none';
+        flashError.style.display = 'none';
+
+        // Disable button and show loading
+        btn.disabled = true;
+        btn.textContent = '⏳ Reading ESP32...';
+
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch('{% url "read_flash" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrftoken
+            },
+            body: `port=${encodeURIComponent(port)}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.textContent = '🔍 Detect & Read Device Info';
+
+                if (data.success) {
+                    // Show flash info with null checks
+                    const chipType = document.getElementById('chipType');
+                    const macAddress = document.getElementById('macAddress');
+                    const flashSize = document.getElementById('flashSize');
+                    const portUsed = document.getElementById('portUsed');
+
+                    if (chipType) chipType.textContent = data.chip_type;
+                    if (macAddress) macAddress.textContent = data.mac_address;
+                    if (flashSize) flashSize.textContent = data.flash_size;
+                    if (portUsed) portUsed.textContent = data.port;
+
+                    flashInfo.style.display = 'block';
+
+                    // Show config section after successful flash read
+                    document.getElementById('configSection').style.display = 'block';
+                } else {
+                    // Show error
+                    document.getElementById('errorMessage').textContent = data.error;
+                    flashError.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                btn.disabled = false;
+                btn.textContent = '🔍 Detect & Read Device Info';
+                document.getElementById('errorMessage').textContent = 'Network error: ' + error.message;
+                flashError.style.display = 'block';
+            });
+    }
+
+    function readSerialConfig() {
+        const port = document.getElementById('portSelect').value;
+        const btn = document.getElementById('readConfigBtn');
+        const configInfo = document.getElementById('configInfo');
+        const configError = document.getElementById('configError');
+
+        if (port === 'auto') {
+            alert('Please select a specific COM port to read configuration');
+            return;
+        }
+
+        // Hide previous results
+        configInfo.style.display = 'none';
+        configError.style.display = 'none';
+
+        // Disable button and show loading
+        btn.disabled = true;
+        btn.textContent = '⏳ Rebooting & Reading... (10s)';
+
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch('{% url "read_serial_config" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrftoken
+            },
+            body: `port=${encodeURIComponent(port)}&reboot=true`
+        })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.textContent = '🔄 Reboot & Read Configuration';
+
+                if (data.success) {
+                    // Show device name
+                    const deviceName = document.getElementById('deviceName');
+                    if (deviceName) deviceName.textContent = data.device_name;
+
+                    // Show GPIO pins using new function
+                    displayGPIOPins(data.gpio_pins || {});
+
+                    // Show entities using new function
+                    const entityNames = data.entities ? data.entities.map(e => e.name || e) : [];
+                    displayEntitiesWithIcons(entityNames);
+
+                    // Show serial logs
+                    const serialLogs = document.getElementById('serialLogs');
+                    if (serialLogs) serialLogs.textContent = data.logs;
+
+                    configInfo.style.display = 'block';
+                } else {
+                    document.getElementById('configErrorMessage').textContent = data.error;
+                    configError.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                btn.disabled = false;
+                btn.textContent = '🔄 Reboot & Read Configuration';
+                document.getElementById('configErrorMessage').textContent = 'Network error: ' + error.message;
+                configError.style.display = 'block';
+            });
+    }
+
+    // Tab switching function
+    function showConfigTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.config-tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+
+        // Reset all tab buttons
+        document.querySelectorAll('.config-tab').forEach(tab => {
+            tab.style.background = '#e9ecef';
+            tab.style.color = '#495057';
+        });
+
+        // Show selected tab content
+        document.getElementById('content-' + tabName).style.display = 'block';
+
+        // Highlight selected tab button
+        document.getElementById('tab-' + tabName).style.background = '#007bff';
+        document.getElementById('tab-' + tabName).style.color = 'white';
+    }
+
+    // Enhanced entity display with icons
+    function displayEntitiesWithIcons(entities) {
+        const entitiesDiv = document.getElementById('entities');
+        if (!entitiesDiv) return;
+
+        if (entities.length === 0) {
+            entitiesDiv.innerHTML = '<p style="color: #666; font-style: italic;">No entities found</p>';
+            return;
+        }
+
+        let html = '';
+        entities.forEach(entity => {
+            // Determine icon and color based on entity type
+            let icon = '⚙️';
+            let color = '#6c757d';
+
+            if (entity.toLowerCase().includes('light')) {
+                icon = '💡';
+                color = '#ffc107';
+            } else if (entity.toLowerCase().includes('switch')) {
+                icon = '🔌';
+                color = '#17a2b8';
+            } else if (entity.toLowerCase().includes('sensor') || entity.toLowerCase().includes('temperature')) {
+                icon = '🌡️';
+                color = '#28a745';
+            } else if (entity.toLowerCase().includes('button')) {
+                icon = '🔘';
+                color = '#6f42c1';
+            }
+
+            html += `
+                <div style="background: white; padding: 12px 15px; border-radius: 8px; border-left: 4px solid ${color}; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.5rem;">${icon}</span>
+                    <span style="font-weight: 500; color: #333;">${entity}</span>
+                </div>
+            `;
+        });
+
+        entitiesDiv.innerHTML = html;
+    }
+
+    // Enhanced GPIO display
+    function displayGPIOPins(gpioPins) {
+        const gpioPinsDiv = document.getElementById('gpioPins');
+        if (!gpioPinsDiv) return;
+
+        if (Object.keys(gpioPins).length === 0) {
+            gpioPinsDiv.innerHTML = '<p style="color: #666; font-style: italic;">No GPIO pins configured</p>';
+            return;
+        }
+
+        let html = '';
+        for (const [pin, component] of Object.entries(gpioPins)) {
+            html += `
+                <div style="background: white; padding: 8px 12px; border-radius: 6px; border: 1px solid #dee2e6; display: inline-flex; align-items: center; gap: 8px;">
+                    <code style="background: #e9ecef; padding: 2px 6px; border-radius: 3px; font-weight: 600;">GPIO${pin}</code>
+                    <span style="color: #666; font-size: 0.85rem;">${component}</span>
+                </div>
+            `;
+        }
+
+        gpioPinsDiv.innerHTML = html;
     }
 </script>
 {% endblock %}

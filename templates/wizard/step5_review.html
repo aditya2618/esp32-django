@@ -72,6 +72,14 @@
             <div class="info-label">Node Name:</div>
             <div class="info-value"><code>{{ wizard_data.device.node_name }}</code></div>
         </div>
+        <div class="info-row">
+            <div class="info-label">Platform:</div>
+            <div class="info-value">
+                <span style="background: #e3f2fd; padding: 4px 12px; border-radius: 4px; font-weight: 600;">
+                    {{ wizard_data.device.platform|upper }}
+                </span>
+            </div>
+        </div>
     </div>
 
     <!-- WiFi Configuration -->
@@ -139,8 +147,9 @@
         style="background: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
         <h4 style="margin-top: 0; color: #155724;">✅ Ready to Create Device</h4>
         <p style="margin: 0; color: #155724;">
-            Click "Create Device" to save this configuration and generate your ESP32 firmware.
-            You'll be able to download the YAML file and flash it to your ESP32 in the next step.
+            Click "Create Device" to save this configuration and generate your {{ wizard_data.device.platform|upper }}
+            firmware.
+            You'll be able to download the YAML file and flash it to your device in the next step.
         </p>
     </div>
 

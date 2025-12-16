@@ -6,7 +6,7 @@ Automatically generates ESPHome YAML configuration from Django entities.
 
 
 def generate_esphome_yaml(device, wifi_ssid='YOUR_WIFI_SSID', wifi_password='YOUR_WIFI_PASSWORD', 
-                          mqtt_broker='YOUR_MQTT_BROKER_IP', mqtt_port=1883):
+                          mqtt_broker='YOUR_MQTT_BROKER_IP', mqtt_port=1883, platform='esp32'):
     """
     Generate complete ESPHome YAML configuration for a device.
     
@@ -16,6 +16,7 @@ def generate_esphome_yaml(device, wifi_ssid='YOUR_WIFI_SSID', wifi_password='YOU
         wifi_password: WiFi password (from wizard session)
         mqtt_broker: MQTT broker IP (from wizard session)
         mqtt_port: MQTT port (from wizard session)
+        platform: 'esp32' or 'esp8266' (default: 'esp32')
         
     Returns:
         str: Complete ESPHome YAML configuration
@@ -27,17 +28,26 @@ def generate_esphome_yaml(device, wifi_ssid='YOUR_WIFI_SSID', wifi_password='YOU
     # Sanitize device name for ESPHome (lowercase, hyphens only)
     esphome_name = device.node_name.lower().replace('_', '-')
     
+    # Determine platform configuration
+    if platform.lower() == 'esp8266':
+        platform_config = """esp8266:
+  board: nodemcuv2
+  framework:
+    version: recommended"""
+    else:  # Default to ESP32
+        platform_config = """esp32:
+  board: esp32dev
+  framework:
+    type: arduino"""
+    
     yaml = f"""# ESPHome Configuration for {device.name}
 # Generated automatically by Django Smart Home
 
 esphome:
-  name: {esphome_name}
+  name: "{esphome_name}"
   friendly_name: {device.name}
 
-esp32:
-  board: esp32dev
-  framework:
-    type: arduino
+{platform_config}
 
 # WiFi Configuration
 wifi:
@@ -49,21 +59,29 @@ wifi:
     ssid: "{esphome_name}-fallback"
     password: "12345678"
 
+# Enable captive portal for WiFi configuration
 captive_portal:
 
 # Enable logging
 logger:
 
-# Enable Over-The-Air updates
+# Enable Home Assistant API
+api:
+
+# Enable OTA updates
 ota:
   - platform: esphome
+
+# Enable web server
+web_server:
+  port: 80
 
 # MQTT Configuration
 mqtt:
   broker: {mqtt_broker}
   port: {mqtt_port}
-  topic_prefix: home/{device.home_id}/{esphome_name}
-  discovery: false
+  discovery: true
+  discovery_prefix: homeassistant
 
 """
     
@@ -92,9 +110,11 @@ mqtt:
         yaml += "\n# GPIO Outputs\noutput:\n"
         for entity in gpio_entities:
             if entity.gpio_pin:
+                # Sanitize entity name for valid ESPHome ID (replace spaces with underscores)
+                sanitized_name = entity.entity_name.replace(' ', '_')
                 yaml += f"""  - platform: gpio
     pin: GPIO{entity.gpio_pin}
-    id: {entity.entity_name}_output
+    id: {sanitized_name}_output
 
 """
     
@@ -102,10 +122,12 @@ mqtt:
     if switches:
         yaml += "\n# Switches\nswitch:\n"
         for entity in switches:
+            # Sanitize entity name for valid ESPHome ID (replace spaces with underscores)
+            sanitized_name = entity.entity_name.replace(' ', '_')
             yaml += f"""  - platform: output
     name: "{entity.friendly_name or entity.entity_name.replace('_', ' ').title()}"
-    id: {entity.entity_name}
-    output: {entity.entity_name}_output
+    id: {sanitized_name}
+    output: {sanitized_name}_output
 
 """
 
@@ -114,10 +136,12 @@ mqtt:
     if lights:
         yaml += "\n# Lights\nlight:\n"
         for entity in lights:
+            # Sanitize entity name for valid ESPHome ID (replace spaces with underscores)
+            sanitized_name = entity.entity_name.replace(' ', '_')
             yaml += f"""  - platform: binary
     name: "{entity.friendly_name or entity.entity_name.replace('_', ' ').title()}"
-    id: {entity.entity_name}
-    output: {entity.entity_name}_output
+    id: {sanitized_name}
+    output: {sanitized_name}_output
 
 """
     
@@ -125,10 +149,12 @@ mqtt:
     if fans:
         yaml += "\n# Fans\nfan:\n"
         for entity in fans:
+            # Sanitize entity name for valid ESPHome ID (replace spaces with underscores)
+            sanitized_name = entity.entity_name.replace(' ', '_')
             yaml += f"""  - platform: binary
     name: "{entity.friendly_name or entity.entity_name.replace('_', ' ').title()}"
-    id: {entity.entity_name}
-    output: {entity.entity_name}_output
+    id: {sanitized_name}
+    output: {sanitized_name}_output
 
 """
 
@@ -138,9 +164,11 @@ mqtt:
         yaml += "\n# Binary Sensors\nbinary_sensor:\n"
         for entity in binary_sensors:
             if entity.gpio_pin:
+                # Sanitize entity name for valid ESPHome ID (replace spaces with underscores)
+                sanitized_name = entity.entity_name.replace(' ', '_')
                 yaml += f"""  - platform: gpio
     name: "{entity.friendly_name or entity.entity_name.replace('_', ' ').title()}"
-    id: {entity.entity_name}
+    id: {sanitized_name}
     pin: 
       number: GPIO{entity.gpio_pin}
       mode: INPUT_PULLUP

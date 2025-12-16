@@ -1,5 +1,50 @@
+import re
 from django.core.exceptions import ValidationError
 from .constants import ESP32_RESERVED_PINS, ESP32_GPIO_CAPABILITIES
+
+
+def validate_entity_name(name):
+    """
+    Validate entity name for ESPHome compatibility.
+    
+    Rules:
+    - Cannot be purely numeric (must contain at least one letter or underscore)
+    - Can only contain letters, numbers, and underscores
+    - Must start with a letter or underscore (not a number)
+    - Length: 1-50 characters
+    
+    Args:
+        name: Entity name to validate
+        
+    Raises:
+        ValidationError: If name is invalid
+    """
+    if not name:
+        raise ValidationError("Entity name cannot be empty.")
+    
+    # Check if purely numeric
+    if name.isdigit():
+        raise ValidationError(
+            "Entity name cannot be purely numeric (e.g., '1', '123'). "
+            "Please include at least one letter or underscore (e.g., 'light_1', 'relay1')."
+        )
+    
+    # Check if starts with a number
+    if name[0].isdigit():
+        raise ValidationError(
+            f"Entity name '{name}' cannot start with a number. "
+            "Please start with a letter or underscore (e.g., 'light_1', 'relay1')."
+        )
+    
+    # Check for valid characters (alphanumeric and underscore only)
+    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name):
+        raise ValidationError(
+            f"Entity name '{name}' contains invalid characters. "
+            "Only letters (a-z, A-Z), numbers (0-9), and underscores (_) are allowed. "
+            "Spaces and special characters are not permitted."
+        )
+    
+    return True
 
 
 def validate_gpio_pin(pin, device_type):

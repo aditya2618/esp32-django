@@ -42,6 +42,15 @@
             <small style="color: #666;">Unique technical identifier (lowercase, underscores only)</small>
         </div>
 
+        <div class="form-group">
+            <label for="platform">Platform *</label>
+            <select name="platform" id="platform" class="form-control" required>
+                <option value="esp32" selected>ESP32</option>
+                <option value="esp8266">ESP8266</option>
+            </select>
+            <small style="color: #666;">Select your device chip type (ESP32 or ESP8266)</small>
+        </div>
+
         <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0;">
             <strong>💡 Naming Convention:</strong><br>
             Use format: <code>{home_id}_{location}_{node_number}</code><br>

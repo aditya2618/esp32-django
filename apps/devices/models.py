@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from .validators import validate_entity_name
 
 
 class Device(models.Model):
@@ -40,7 +41,11 @@ class Entity(models.Model):
     )
     
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='entities')
-    entity_name = models.CharField(max_length=50, help_text="Entity name (e.g., living_room_fan)")
+    entity_name = models.CharField(
+        max_length=50, 
+        validators=[validate_entity_name],
+        help_text="Entity name (e.g., living_room_fan). Must start with letter/underscore, contain only letters, numbers, and underscores."
+    )
     entity_type = models.CharField(max_length=20, choices=ENTITY_TYPES)
     gpio_pin = models.IntegerField(null=True, blank=True, help_text="GPIO pin number (if applicable)")
     

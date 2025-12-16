@@ -7,10 +7,12 @@ Step-by-step wizard to configure ESP32 devices for smart home integration.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
+from django.core.exceptions import ValidationError
 from .models import Device, Entity
 from .forms import DeviceForm, EntityForm
 from .esphome_generator import generate_esphome_yaml
 from .firmware_builder import compile_and_prepare_firmware
+from .validators import validate_entity_name
 import json
 
 
@@ -33,6 +35,7 @@ def wizard_step1_device_info(request):
                 'home_id': form.cleaned_data['home_id'],
                 'name': form.cleaned_data['name'],
                 'node_name': form.cleaned_data['node_name'],
+                'platform': form.cleaned_data['platform'],  # Save platform choice
             }
             request.session['wizard_data'] = wizard_data
             return redirect('wizard_step2_wifi')
@@ -45,7 +48,7 @@ def wizard_step1_device_info(request):
         'step': 1,
         'total_steps': 6,
         'step_title': 'Device Information',
-        'step_description': 'Enter basic information about your ESP32 device',
+        'step_description': 'Enter basic information about your ESP32/ESP8266 device',
     }
     return render(request, 'wizard/step1_device_info.html', context)
 
@@ -130,8 +133,17 @@ def wizard_step4_entities(request):
         
         if action == 'add_entity':
             # Add entity to wizard data
+            entity_name = request.POST.get('entity_name')
+            
+            # Validate entity name before adding
+            try:
+                validate_entity_name(entity_name)
+            except ValidationError as e:
+                messages.error(request, f'Invalid entity name: {e.message}')
+                return redirect('wizard_step4_entities')
+            
             entity = {
-                'entity_name': request.POST.get('entity_name'),
+                'entity_name': entity_name,
                 'entity_type': request.POST.get('entity_type'),
                 'gpio_pin': request.POST.get('gpio_pin'),
                 'friendly_name': request.POST.get('friendly_name'),
@@ -228,8 +240,14 @@ def wizard_step6_complete(request):
     
     device = get_object_or_404(Device, id=device_id)
     
+    # Get platform from wizard data (default to esp32 for backward compatibility)
+    platform = wizard_data.get('device', {}).get('platform', 'esp32')
+    
     # Generate YAML with WiFi and MQTT config
-    yaml_content = generate_esphome_yaml(device)
+    yaml_content = generate_esphome_yaml(
+        device,
+        platform=platform
+    )
     
     # Replace placeholders with actual values
     if wizard_data.get('wifi'):
@@ -238,7 +256,7 @@ def wizard_step6_complete(request):
     
     if wizard_data.get('mqtt'):
         yaml_content = yaml_content.replace('YOUR_MQTT_BROKER_IP', wizard_data['mqtt']['broker'])
-        yaml_content = yaml_content.replace('YOUR_MQTT_USERNAME', wizard_data['mqtt'].get('username', ''))
+        yaml_content = yaml_content.replace('1883', str(wizard_data['mqtt'].get('port', 1883)))
         yaml_content = yaml_content.replace('YOUR_MQTT_PASSWORD', wizard_data['mqtt'].get('password', ''))
     
     # Check if user wants to compile firmware
@@ -254,10 +272,10 @@ def wizard_step6_complete(request):
             messages.info(request, 'Compiling firmware... This may take a few minutes.')
             
             # Use the helper function that handles everything
-            firmware_result = compile_and_prepare_firmware(device, yaml_content)
+            firmware_result = compile_and_prepare_firmware(device, yaml_content, platform=platform)
             
             if firmware_result['success']:
-                messages.success(request, 'Firmware compiled successfully! You can now flash your ESP32.')
+                messages.success(request, f'Firmware compiled successfully! You can now flash your {platform.upper()}.')
             else:
                 messages.error(request, f'Firmware compilation failed. Check the logs below.')
             
