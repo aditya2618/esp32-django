@@ -46,32 +46,56 @@ class FirmwareBuilder:
             # Use esphome from venv if it exists, otherwise try system esphome
             esphome_cmd = str(esphome_exe) if esphome_exe.exists() else 'esphome'
             
+            logger.info(f"Starting ESPHome compilation for {self.device.node_name}")
+            logger.info(f"Using ESPHome command: {esphome_cmd}")
+            logger.info(f"YAML path: {yaml_path}")
+            
             # Run ESPHome compile command
             result = subprocess.run(
                 [esphome_cmd, 'compile', str(yaml_path)],
                 cwd=str(self.build_dir),
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=900  # 15 minute timeout (increased from 5)
             )
             
             logs = result.stdout + result.stderr
+            logger.info(f"ESPHome compilation completed with return code: {result.returncode}")
             
             if result.returncode == 0:
-                # Find the compiled .bin file
-                bin_path = self.build_dir / '.esphome' / 'build' / self.device.node_name / 'firmware.bin'
-                if bin_path.exists():
+                # ESPHome sanitizes names by replacing underscores with hyphens
+                esphome_name = self.device.node_name.replace('_', '-')
+                
+                # Find the compiled .bin file - try multiple possible locations
+                possible_paths = [
+                    self.build_dir / '.esphome' / 'build' / esphome_name / '.pioenvs' / esphome_name / 'firmware.bin',
+                    self.build_dir / '.esphome' / 'build' / self.device.node_name / '.pioenvs' / self.device.node_name / 'firmware.bin',
+                    self.build_dir / '.esphome' / 'build' / esphome_name / 'firmware.bin',
+                    self.build_dir / '.esphome' / 'build' / self.device.node_name / 'firmware.bin',
+                    self.build_dir / f'{self.device.node_name}.bin',
+                ]
+                
+                bin_path = None
+                for path in possible_paths:
+                    logger.info(f"Checking path: {path}")
+                    if path.exists():
+                        bin_path = path
+                        logger.info(f"Found .bin file at: {bin_path}")
+                        break
+                
+                if bin_path:
                     logger.info(f"Firmware compiled successfully: {bin_path}")
                     return True, str(bin_path), logs
                 else:
-                    logger.error("Compilation succeeded but .bin file not found")
+                    logger.error("Compilation succeeded but .bin file not found in expected locations")
+                    logger.error(f"Searched paths: {[str(p) for p in possible_paths]}")
                     return False, None, logs + "\n\nError: Compiled .bin file not found"
             else:
                 logger.error(f"Compilation failed: {logs}")
                 return False, None, logs
                 
         except subprocess.TimeoutExpired:
-            error_msg = "Compilation timed out after 5 minutes"
+            error_msg = "Compilation timed out after 15 minutes"
             logger.error(error_msg)
             return False, None, error_msg
         except FileNotFoundError as e:
@@ -155,16 +179,22 @@ def compile_and_prepare_firmware(device, yaml_content):
     success, bin_path, logs = builder.compile_firmware(yaml_path)
     
     if success:
-        # Create manifest for web flashing
-        builder.create_manifest(bin_path)
+        # Copy the .bin file to a predictable location for download
+        import shutil
+        dest_bin = builder.build_dir / 'firmware.bin'
+        shutil.copy2(bin_path, dest_bin)
+        logger.info(f"Copied firmware from {bin_path} to {dest_bin}")
         
-        # Get URLs
-        bin_url = builder.get_web_flasher_url(bin_path)
+        # Create manifest for web flashing
+        builder.create_manifest(str(dest_bin))
+        
+        # Get URLs - use the copied file location
+        bin_url = f"{settings.MEDIA_URL}esphome_builds/{device.node_name}/firmware.bin"
         web_flasher_url = f"https://web.esphome.io/?configuration={settings.SITE_URL}{bin_url}"
         
         return {
             'success': True,
-            'bin_path': bin_path,
+            'bin_path': str(dest_bin),
             'bin_url': bin_url,
             'logs': logs,
             'web_flasher_url': web_flasher_url,

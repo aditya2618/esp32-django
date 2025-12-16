@@ -89,4 +89,18 @@
         <a href="{% url 'ota_status' %}" class="btn">View OTA Status</a>
     </div>
 </div>
+
+<form id="deleteForm" method="POST" style="display: none;">
+    {% csrf_token %}
+</form>
+
+<script>
+    function confirmDelete(deviceId, deviceName) {
+        if (confirm('Are you sure you want to delete "' + deviceName + '"?\n\nThis will permanently remove the device and all its entities.\nThis action cannot be undone.')) {
+            var form = document.getElementById('deleteForm');
+            form.action = '/device/' + deviceId + '/delete/';
+            form.submit();
+        }
+    }
+</script>
 {% endblock %}

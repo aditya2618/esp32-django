@@ -242,17 +242,32 @@ def wizard_step6_complete(request):
         yaml_content = yaml_content.replace('YOUR_MQTT_PASSWORD', wizard_data['mqtt'].get('password', ''))
     
     # Check if user wants to compile firmware
-    compile_firmware = request.GET.get('compile', 'false') == 'true'
+    compile_firmware_flag = request.GET.get('compile', 'false') == 'true'
     firmware_result = None
     
-    if compile_firmware:
-        messages.info(request, 'Compiling firmware... This may take a few minutes.')
-        firmware_result = compile_and_prepare_firmware(device, yaml_content)
-        
-        if firmware_result['success']:
-            messages.success(request, 'Firmware compiled successfully! You can now flash your ESP32.')
-        else:
-            messages.error(request, 'Firmware compilation failed. See logs below.')
+    if compile_firmware_flag:
+        try:
+            from .firmware_builder import compile_and_prepare_firmware
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            messages.info(request, 'Compiling firmware... This may take a few minutes.')
+            
+            # Use the helper function that handles everything
+            firmware_result = compile_and_prepare_firmware(device, yaml_content)
+            
+            if firmware_result['success']:
+                messages.success(request, 'Firmware compiled successfully! You can now flash your ESP32.')
+            else:
+                messages.error(request, f'Firmware compilation failed. Check the logs below.')
+            
+        except Exception as e:
+            firmware_result = {
+                'success': False,
+                'error': str(e),
+                'logs': str(e)
+            }
+            messages.error(request, f'Firmware compilation error: {str(e)}')
     
     context = {
         'device': device,

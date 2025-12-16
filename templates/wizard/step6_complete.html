@@ -53,6 +53,23 @@
         </p>
     </div>
 
+    <!-- Full-Screen Compilation Modal -->
+    <div id="compilationModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 9999; justify-content: center; align-items: center;">
+        <div
+            style="background: white; padding: 40px; border-radius: 12px; text-align: center; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+            <div class="big-spinner"
+                style="width: 80px; height: 80px; border: 8px solid #f3f3f3; border-top: 8px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 30px;">
+            </div>
+            <h2 style="color: #333; margin-bottom: 15px;">⚙️ Compiling Firmware...</h2>
+            <p style="color: #666; font-size: 1.1rem; margin-bottom: 10px;">Please wait while we compile your firmware.
+            </p>
+            <p style="color: #999; font-size: 0.9rem;">This may take 10-15 minutes.</p>
+            <p style="color: #999; font-size: 0.85rem; margin-top: 20px;">⚠️ Do not close this page or refresh the
+                browser.</p>
+        </div>
+    </div>
+
     <!-- Compilation Status Messages -->
     <div id="compilationStatus"
         style="display: none; background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #ffc107;">
@@ -301,18 +318,24 @@
 
     // Compile firmware with visual feedback
     function compileFirmware() {
+        const modal = document.getElementById('compilationModal');
         const statusDiv = document.getElementById('compilationStatus');
         const resultDiv = document.getElementById('compilationResult');
         const compileBtn = document.getElementById('compileBtn');
-        const successMsg = document.getElementById('successMessage');
-        const errorMsg = document.getElementById('errorMessage');
+
+        // Show modal overlay
+        if (modal) {
+            modal.style.display = 'flex';
+        }
 
         // Show loading state
-        statusDiv.style.display = 'block';
-        resultDiv.style.display = 'none';
-        compileBtn.disabled = true;
-        compileBtn.textContent = '⏳ Compiling...';
-        compileBtn.style.opacity = '0.6';
+        if (statusDiv) statusDiv.style.display = 'block';
+        if (resultDiv) resultDiv.style.display = 'none';
+        if (compileBtn) {
+            compileBtn.disabled = true;
+            compileBtn.textContent = '⏳ Compiling...';
+            compileBtn.style.opacity = '0.6';
+        }
 
         // Redirect to trigger compilation
         window.location.href = '?compile=true';
@@ -323,35 +346,67 @@
         const urlParams = new URLSearchParams(window.location.search);
         const compiling = urlParams.get('compile') === 'true';
 
+        console.log('Page loaded. Compile parameter:', compiling);
+
         if (compiling) {
+            const modal = document.getElementById('compilationModal');
             const statusDiv = document.getElementById('compilationStatus');
             const compileBtn = document.getElementById('compileBtn');
 
-            statusDiv.style.display = 'block';
-            compileBtn.disabled = true;
-            compileBtn.textContent = '⏳ Compiling...';
-            compileBtn.style.opacity = '0.6';
+            console.log('Showing compilation modal and spinner');
+
+            // Show modal overlay
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+
+            if (statusDiv) {
+                statusDiv.style.display = 'block';
+            }
+            if (compileBtn) {
+                compileBtn.disabled = true;
+                compileBtn.textContent = '⏳ Compiling...';
+                compileBtn.style.opacity = '0.6';
+            }
 
             // Check for compilation result in messages
             {% if firmware_result %}
-            setTimeout(function () {
-                statusDiv.style.display = 'none';
-                const resultDiv = document.getElementById('compilationResult');
-                resultDiv.style.display = 'block';
+            console.log('Firmware result available:', {{ firmware_result.success | lower }});
 
-                {% if firmware_result.success %}
-                document.getElementById('successMessage').style.display = 'block';
-                compileBtn.textContent = '✅ Compiled Successfully';
-                compileBtn.style.background = '#28a745';
-                {% else %}
-                document.getElementById('errorMessage').style.display = 'block';
-                document.getElementById('errorDetails').textContent = '{{ firmware_result.error|escapejs }}';
-                compileBtn.disabled = false;
-                compileBtn.textContent = '🔄 Try Again';
-                compileBtn.style.opacity = '1';
-                {% endif %}
-            }, 500);
-            {% endif %}
+    // Hide modal when result is available
+    if (modal) {
+        modal.style.display = 'none';
+    }
+
+    setTimeout(function () {
+        if (statusDiv) statusDiv.style.display = 'none';
+        const resultDiv = document.getElementById('compilationResult');
+        if (resultDiv) resultDiv.style.display = 'block';
+
+        {% if firmware_result.success %}
+        console.log('Compilation successful!');
+        const successMsg = document.getElementById('successMessage');
+        if (successMsg) successMsg.style.display = 'block';
+        if (compileBtn) {
+            compileBtn.textContent = '✅ Compiled Successfully';
+            compileBtn.style.background = '#28a745';
+        }
+        {% else %}
+        console.log('Compilation failed:', '{{ firmware_result.error|escapejs }}');
+        const errorMsg = document.getElementById('errorMessage');
+        const errorDetails = document.getElementById('errorDetails');
+        if (errorMsg) errorMsg.style.display = 'block';
+        if (errorDetails) errorDetails.textContent = '{{ firmware_result.error|escapejs }}';
+        if (compileBtn) {
+            compileBtn.disabled = false;
+            compileBtn.textContent = '🔄 Try Again';
+            compileBtn.style.opacity = '1';
+        }
+        {% endif %}
+    }, 500);
+    {% else %}
+    console.log('No firmware result yet - still compiling');
+    {% endif %}
         }
     });
 </script>
