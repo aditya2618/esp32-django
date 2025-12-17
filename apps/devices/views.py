@@ -17,12 +17,18 @@ from .constants import ESP32_RESERVED_PINS
 
 def dashboard(request):
     """Main dashboard showing all devices"""
+    from django.utils import timezone
+    from datetime import timedelta
+    
     devices = Device.objects.all().prefetch_related('entities')
+    
+    # Calculate online devices (last seen within 60 seconds)
+    online_count = sum(1 for d in devices if d.is_online)
     
     context = {
         'devices': devices,
         'total_devices': devices.count(),
-        'online_devices': devices.filter(is_online=True).count(),
+        'online_devices': online_count,
     }
     return render(request, 'dashboard.html', context)
 

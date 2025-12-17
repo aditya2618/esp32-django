@@ -7,24 +7,22 @@
     <h2>🔧 {{ device.name }}</h2>
     <p><strong>Node Name:</strong> <code>{{ device.node_name }}</code></p>
     <p><strong>Home ID:</strong> {{ device.home_id }}</p>
-    <p><strong>Status:</strong> 
+    <p><strong>Status:</strong>
         {% if device.is_online %}
         <span class="badge badge-online">Online</span>
         {% else %}
         <span class="badge badge-offline">Offline</span>
         {% endif %}
     </p>
-    <p><strong>Last Seen:</strong> 
+    <p><strong>Last Seen:</strong>
         {% if device.last_seen %}
         {{ device.last_seen|date:"Y-m-d H:i:s" }}
         {% else %}
         Never
         {% endif %}
     </p>
-    
+
     <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-        <a href="{% url 'add_entity' device.id %}" class="btn btn-success">+ Add Entity</a>
-        <a href="{% url 'gpio_mapping' device.id %}" class="btn">GPIO Mapping</a>
         <a href="{% url 'esp32_pinout' device.id %}" class="btn">View Pinout</a>
         <a href="{% url 'firmware_page' device.id %}" class="btn btn-warning">Firmware/OTA</a>
         <a href="{% url 'view_yaml' device.id %}" class="btn">Generate YAML</a>
@@ -46,11 +44,11 @@
                 {% csrf_token %}
                 <input type="hidden" name="entity_id" value="{{ entity.id }}">
                 <input type="hidden" name="value" value="{% if entity.state == 'ON' %}OFF{% else %}ON{% endif %}">
-                <button type="submit" class="btn btn-small {% if entity.state == 'ON' %}btn-danger{% else %}btn-success{% endif %}">
+                <button type="submit"
+                    class="btn btn-small {% if entity.state == 'ON' %}btn-danger{% else %}btn-success{% endif %}">
                     {% if entity.state == 'ON' %}Turn OFF{% else %}Turn ON{% endif %}
                 </button>
             </form>
-            <a href="{% url 'edit_entity' entity.id %}" class="btn btn-small btn-warning">Edit</a>
         </div>
         {% endfor %}
     </div>
@@ -71,11 +69,11 @@
                 {% csrf_token %}
                 <input type="hidden" name="entity_id" value="{{ entity.id }}">
                 <input type="hidden" name="value" value="{% if entity.state == 'ON' %}OFF{% else %}ON{% endif %}">
-                <button type="submit" class="btn btn-small {% if entity.state == 'ON' %}btn-danger{% else %}btn-success{% endif %}">
+                <button type="submit"
+                    class="btn btn-small {% if entity.state == 'ON' %}btn-danger{% else %}btn-success{% endif %}">
                     {% if entity.state == 'ON' %}Turn OFF{% else %}Turn ON{% endif %}
                 </button>
             </form>
-            <a href="{% url 'edit_entity' entity.id %}" class="btn btn-small btn-warning">Edit</a>
         </div>
         {% endfor %}
     </div>
@@ -96,11 +94,11 @@
                 {% csrf_token %}
                 <input type="hidden" name="entity_id" value="{{ entity.id }}">
                 <input type="hidden" name="value" value="{% if entity.state == 'ON' %}OFF{% else %}ON{% endif %}">
-                <button type="submit" class="btn btn-small {% if entity.state == 'ON' %}btn-danger{% else %}btn-success{% endif %}">
+                <button type="submit"
+                    class="btn btn-small {% if entity.state == 'ON' %}btn-danger{% else %}btn-success{% endif %}">
                     {% if entity.state == 'ON' %}Turn OFF{% else %}Turn ON{% endif %}
                 </button>
             </form>
-            <a href="{% url 'edit_entity' entity.id %}" class="btn btn-small btn-warning">Edit</a>
         </div>
         {% endfor %}
     </div>
@@ -125,9 +123,7 @@
                 <td>{{ entity.entity_name }}</td>
                 <td><strong>{{ entity.state|default:"N/A" }}</strong></td>
                 <td>{{ entity.last_updated|date:"Y-m-d H:i:s"|default:"Never" }}</td>
-                <td>
-                    <a href="{% url 'edit_entity' entity.id %}" class="btn btn-small btn-warning">Edit</a>
-                </td>
+
             </tr>
             {% endfor %}
         </tbody>
@@ -142,4 +138,140 @@
     </p>
 </div>
 {% endif %}
+
+<script>
+    // Real-time auto-refresh for device detail page
+    let autoRefreshInterval;
+
+    function startAutoRefresh() {
+        autoRefreshInterval = setInterval(() => {
+            refreshDeviceData();
+        }, 2000); // Refresh every 2 seconds for near real-time updates
+    }
+
+    function refreshDeviceData() {
+        fetch(window.location.href, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                // Update device status badge
+                const newStatus = doc.querySelector('.badge');
+                const currentStatus = document.querySelector('.badge');
+                if (newStatus && currentStatus) {
+                    currentStatus.className = newStatus.className;
+                    currentStatus.textContent = newStatus.textContent;
+                }
+
+                // Update switches
+                updateEntities(doc, 'switch');
+
+                // Update lights
+                updateEntities(doc, 'light');
+
+                // Update fans
+                updateEntities(doc, 'fan');
+
+                // Update sensors
+                updateSensors(doc);
+
+                console.log('Device data refreshed at ' + new Date().toLocaleTimeString());
+            })
+            .catch(error => {
+                console.error('Auto-refresh failed:', error);
+            });
+    }
+
+    function updateEntities(doc, type) {
+        // Find all entity cards for this type
+        const currentCards = document.querySelectorAll(`div[style*="background: ${getBackgroundColor(type)}"]`);
+        const newCards = doc.querySelectorAll(`div[style*="background: ${getBackgroundColor(type)}"]`);
+
+        currentCards.forEach((card, index) => {
+            if (newCards[index]) {
+                // Update state text
+                const currentState = card.querySelector('strong');
+                const newState = newCards[index].querySelector('strong');
+                if (currentState && newState && currentState.textContent !== newState.textContent) {
+                    currentState.textContent = newState.textContent;
+
+                    // Flash animation to show change
+                    card.style.transition = 'background-color 0.3s';
+                    const originalBg = card.style.background;
+                    card.style.background = '#90EE90';
+                    setTimeout(() => {
+                        card.style.background = originalBg;
+                    }, 300);
+                }
+
+                // Update button
+                const currentButton = card.querySelector('button[type="submit"]');
+                const newButton = newCards[index].querySelector('button[type="submit"]');
+                if (currentButton && newButton) {
+                    currentButton.className = newButton.className;
+                    currentButton.textContent = newButton.textContent;
+                    currentButton.previousElementSibling.value = newButton.previousElementSibling.value;
+                }
+            }
+        });
+    }
+
+    function updateSensors(doc) {
+        const currentRows = document.querySelectorAll('table tbody tr');
+        const newRows = doc.querySelectorAll('table tbody tr');
+
+        currentRows.forEach((row, index) => {
+            if (newRows[index]) {
+                // Update sensor value (2nd column)
+                const currentValue = row.cells[1]?.querySelector('strong');
+                const newValue = newRows[index].cells[1]?.querySelector('strong');
+
+                if (currentValue && newValue && currentValue.textContent !== newValue.textContent) {
+                    currentValue.textContent = newValue.textContent;
+
+                    // Flash animation
+                    currentValue.style.transition = 'color 0.3s';
+                    currentValue.style.color = '#28a745';
+                    setTimeout(() => {
+                        currentValue.style.color = '';
+                    }, 300);
+                }
+
+                // Update last updated time (3rd column)
+                const currentTime = row.cells[2];
+                const newTime = newRows[index].cells[2];
+                if (currentTime && newTime) {
+                    currentTime.textContent = newTime.textContent;
+                }
+            }
+        });
+    }
+
+    function getBackgroundColor(type) {
+        switch (type) {
+            case 'switch': return '#f8f9fa';
+            case 'light': return '#fff3cd';
+            case 'fan': return '#d1ecf1';
+            default: return '#f8f9fa';
+        }
+    }
+
+    // Start auto-refresh when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        startAutoRefresh();
+        console.log('Real-time updates enabled (every 2 seconds)');
+    });
+
+    // Stop auto-refresh when leaving page
+    window.addEventListener('beforeunload', () => {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+    });
+</script>
 {% endblock %}

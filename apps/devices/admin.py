@@ -5,7 +5,7 @@ from .models import Device, Entity, GPIOMapping, Firmware, OTAStatus
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
     list_display = ('name', 'node_name', 'home_id', 'is_online', 'last_seen', 'created_at')
-    list_filter = ('is_online', 'home_id', 'created_at')
+    list_filter = ('home_id', 'created_at')
     search_fields = ('name', 'node_name', 'home_id')
     readonly_fields = ('created_at', 'last_seen')
     
@@ -14,7 +14,7 @@ class DeviceAdmin(admin.ModelAdmin):
             'fields': ('home_id', 'name', 'node_name')
         }),
         ('Status', {
-            'fields': ('is_online', 'last_seen', 'created_at')
+            'fields': ('last_seen', 'created_at')
         }),
     )
 

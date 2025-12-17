@@ -8,9 +8,16 @@ class Device(models.Model):
     home_id = models.CharField(max_length=50)
     name = models.CharField(max_length=100)
     node_name = models.CharField(max_length=100, help_text="ESPHome node name (e.g., home1_livingroom_node1)")
-    is_online = models.BooleanField(default=False)
     last_seen = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    @property
+    def is_online(self):
+        """Check if device is online (last seen within 60 seconds)"""
+        if not self.last_seen:
+            return False
+        from datetime import timedelta
+        return timezone.now() - self.last_seen < timedelta(seconds=60)
     
     def __str__(self):
         return f"{self.name} ({self.node_name})"
@@ -22,8 +29,7 @@ class Device(models.Model):
     def update_last_seen(self):
         """Update last seen timestamp"""
         self.last_seen = timezone.now()
-        self.is_online = True
-        self.save(update_fields=['last_seen', 'is_online'])
+        self.save(update_fields=['last_seen'])
 
 
 class Entity(models.Model):

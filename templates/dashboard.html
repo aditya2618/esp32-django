@@ -24,7 +24,6 @@
         <a href="{% url 'wizard_start' %}" class="btn btn-success" style="font-size: 1.1rem;">
             🚀 Setup New Device (Wizard)
         </a>
-        <a href="{% url 'add_device' %}" class="btn">+ Quick Add Device</a>
         <button onclick="openFlashReader()" class="btn" style="background: #007bff; color: white;">
             🔍 Read Connected ESP32/ESP8266
         </button>
@@ -224,9 +223,6 @@
                 </td>
                 <td>
                     <a href="{% url 'device_detail' device.id %}" class="btn btn-small">View</a>
-                    <a href="{% url 'edit_device' device.id %}" class="btn btn-small btn-warning">Edit</a>
-                    <button onclick="confirmDelete({{ device.id }}, '{{ device.name|escapejs }}')" class="btn btn-small"
-                        style="background: #dc3545; color: white;">Delete</button>
                 </td>
             </tr>
             {% endfor %}
@@ -503,5 +499,63 @@
 
         gpioPinsDiv.innerHTML = html;
     }
+
+    // Auto-refresh dashboard every 5 seconds
+    let autoRefreshInterval;
+
+    function startAutoRefresh() {
+        autoRefreshInterval = setInterval(() => {
+            refreshDeviceList();
+        }, 5000); // Refresh every 5 seconds
+    }
+
+    function refreshDeviceList() {
+        fetch(window.location.href, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => response.text())
+            .then(html => {
+                // Parse the HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                // Update device table
+                const newTable = doc.querySelector('table tbody');
+                const currentTable = document.querySelector('table tbody');
+                if (newTable && currentTable) {
+                    currentTable.innerHTML = newTable.innerHTML;
+                }
+
+                // Update stats
+                const stats = doc.querySelectorAll('.card > div > div');
+                const currentStats = document.querySelectorAll('.card > div > div');
+                if (stats.length >= 3 && currentStats.length >= 3) {
+                    currentStats[0].querySelector('h3').textContent = stats[0].querySelector('h3').textContent;
+                    currentStats[1].querySelector('h3').textContent = stats[1].querySelector('h3').textContent;
+                    currentStats[2].querySelector('h3').textContent = stats[2].querySelector('h3').textContent;
+                }
+
+                console.log('Dashboard refreshed at ' + new Date().toLocaleTimeString());
+            })
+            .catch(error => {
+                console.error('Auto-refresh failed:', error);
+            });
+    }
+
+    // Start auto-refresh when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        startAutoRefresh();
+        console.log('Auto-refresh enabled (every 5 seconds)');
+    });
+
+    // Stop auto-refresh when leaving page
+    window.addEventListener('beforeunload', () => {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+    });
+
 </script>
 {% endblock %}
