@@ -39,10 +39,9 @@ def generate_esphome_yaml(device, wifi_ssid='YOUR_WIFI_SSID', wifi_password='YOU
   framework:
     type: arduino"""
     
-    # Base YAML
+    # Base YAML with improved formatting
     yaml = f"""# ESPHome Configuration for {device.name}
-# Platform: {platform.upper()}
-# Generated automatically
+# Generated automatically by Django Smart Home
 
 esphome:
   name: "{esphome_name}"
@@ -55,27 +54,26 @@ wifi:
   ssid: "{wifi_ssid}"
   password: "{wifi_password}"
   
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "{esphome_name}-fallback"
     password: "12345678"
 
 captive_portal:
 
+# Enable logging
 logger:
 
-api:
-
+# Enable Over-The-Air updates
 ota:
   - platform: esphome
 
-web_server:
-  port: 80
-
+# MQTT Configuration
 mqtt:
   broker: {mqtt_broker}
   port: {mqtt_port}
-  discovery: true
-  discovery_prefix: homeassistant
+  topic_prefix: {device.base_topic()}
+  discovery: false
 
 """
     
@@ -90,6 +88,7 @@ i2c:
 
 """
     
+    
     # Generate component configurations
     yaml += generate_sensors_yaml(entities)
     yaml += generate_binary_sensors_yaml(entities)
@@ -97,6 +96,16 @@ i2c:
     yaml += generate_lights_yaml(entities)
     yaml += generate_fans_yaml(entities)
     yaml += generate_steppers_yaml(entities)
+    
+    # Add configuration instructions at the end
+    yaml += f"""
+
+# Configuration Instructions:
+# 1. Replace YOUR_WIFI_SSID and YOUR_WIFI_PASSWORD with your actual WiFi credentials
+# 2. Replace YOUR_MQTT_BROKER_IP with your MQTT broker IP address (e.g., 192.168.1.100)
+# 3. Verify GPIO pin assignments match your hardware connections
+# 4. Flash to {platform.upper()} using ESPHome Web or CLI: esphome run {esphome_name}.yaml
+"""
     
     return yaml
 
