@@ -186,6 +186,27 @@ GPIO 0, 2, 6, 7, 8, 9, 10, 11, 12, 15
 
 ## Troubleshooting
 
+### ESP32 Flashing Issues
+
+**If flashing fails with "Wrong boot mode detected (0x13)" error:**
+
+Some ESP32 boards don't support automatic boot mode switching. To flash manually:
+
+1. Click **"Flash Firmware"** button in the web interface
+2. **Immediately hold down the BOOT button** on your ESP32 board
+3. Keep holding for 5-10 seconds while the connection is established
+4. Release when you see "Writing at 0x..." progress messages
+5. Wait for the flash process to complete
+
+> **Note**: This is required on boards without DTR/RTS auto-reset circuitry. If your board works on another computer, it may have better USB drivers or different timing.
+
+**Alternative: Manual esptool command**
+```powershell
+# Put ESP32 in boot mode first (hold BOOT, plug USB, release)
+# Then run the command shown in the error message
+.\esp32\Scripts\python -m esptool --port COM6 write_flash ...
+```
+
 ### MQTT Not Connecting
 1. Check MQTT broker is running
 2. Verify `MQTT_BROKER` IP in settings.py

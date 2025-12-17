@@ -176,13 +176,37 @@
                     {% endif %}
                     <h4>{{ entity.friendly_name|default:entity.entity_name }}</h4>
                 </div>
+
+                <!-- Basic Info -->
                 <p style="margin: 5px 0; color: #666;">
                     <strong>Type:</strong> {{ entity.entity_type|title }} |
-                    <strong>GPIO Pin:</strong> {{ entity.gpio_pin|default:"Not assigned" }} |
-                    <strong>Room:</strong> {{ entity.room|default:"Not set" }}
+                    <strong>Hardware:</strong> {{ entity.hardware_type|default:"Generic" }} |
+                    <strong>GPIO:</strong>
+                    {% if entity.pin_config %}
+                    {% for key, val in entity.pin_config.items %}
+                    <span style="font-size: 0.9em; background: #eef; padding: 2px 5px; border-radius: 4px;">{{ key|title
+                        }}: {{ val }}</span>
+                    {% endfor %}
+                    {% else %}
+                    {{ entity.gpio_pin|default:"Not assigned" }}
+                    {% endif %}
                 </p>
+
+                <!-- Configuration Details -->
                 <p style="margin: 5px 0; color: #666; font-size: 0.9rem;">
                     <strong>ID:</strong> <code>{{ entity.entity_name }}</code>
+                    {% if entity.room %}
+                    | <strong>Room:</strong> {{ entity.room }}
+                    {% endif %}
+                    {% if entity.update_interval %}
+                    | <strong>Update:</strong> {{ entity.update_interval }}s
+                    {% endif %}
+                    {% if entity.i2c_address %}
+                    | <strong>I2C:</strong> {{ entity.i2c_address }}
+                    {% endif %}
+                    {% if entity.inverted %}
+                    | <strong>⚠️ Inverted</strong>
+                    {% endif %}
                 </p>
             </div>
             <form method="post" style="display: inline;">
@@ -227,22 +251,79 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="hardware_type">Hardware Model *</label>
+                    <select name="hardware_type" id="hardware_type" class="form-control" required>
+                        <option value="">-- Select Hardware --</option>
+                        {% if form.fields.hardware_type.choices %}
+                        {% for value, label in form.fields.hardware_type.choices %}
+                        {% if value %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endif %}
+                        {% endfor %}
+                        {% endif %}
+                    </select>
+                    <small style="color: #666;">Select specific component model</small>
+                </div>
+
+                <div class="form-group">
                     <label for="friendly_name">Friendly Name</label>
                     <input type="text" name="friendly_name" id="friendly_name" class="form-control"
                         placeholder="e.g., Living Room Light">
                     <small style="color: #666;">Display name for your app</small>
                 </div>
 
-                <div class="form-group pin-picker-container">
-                    <label for="gpio_pin">GPIO Pin Number</label>
-                    <input type="text" name="gpio_pin" id="gpio_pin" class="form-control"
-                        placeholder="Click to select pin" readonly onclick="togglePinPicker()">
-                    <small style="color: #666;">Click to select from available GPIO pins</small>
+                <!-- Dynamic Pin Configuration -->
+                <div id="pinConfigContainer" style="grid-column: span 2;">
+                    <!-- Single Pin Field (Default) -->
+                    <div class="form-group pin-picker-container" id="singlePinGroup">
+                        <label for="gpio_pin">GPIO Pin Number *</label>
+                        <input type="text" name="gpio_pin" id="gpio_pin" class="form-control"
+                            placeholder="Click to select pin" readonly onclick="togglePinPicker('gpio_pin')">
+                        <small style="color: #666;">Click to select from available {{ platform|upper }} GPIO
+                            pins</small>
+                    </div>
+
+                    <!-- Multi-Pin Fields (Hidden by default) -->
+                    <div id="multiPinGroup"
+                        style="display: none; background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
+                        <label style="display:block; margin-bottom:10px; font-weight:600; color:#2c3e50;">Pin
+                            Configuration</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="form-group pin-picker-container" id="pin1Group">
+                                <label for="pin_1" id="pin1Label">Pin 1 *</label>
+                                <input type="text" name="pin_1" id="pin_1" class="form-control" placeholder="Select pin"
+                                    readonly onclick="togglePinPicker('pin_1')">
+                            </div>
+                            <div class="form-group pin-picker-container" id="pin2Group">
+                                <label for="pin_2" id="pin2Label">Pin 2 *</label>
+                                <input type="text" name="pin_2" id="pin_2" class="form-control" placeholder="Select pin"
+                                    readonly onclick="togglePinPicker('pin_2')">
+                            </div>
+                            <div class="form-group pin-picker-container" id="pin3Group">
+                                <label for="pin_3" id="pin3Label">Pin 3 *</label>
+                                <input type="text" name="pin_3" id="pin_3" class="form-control" placeholder="Select pin"
+                                    readonly onclick="togglePinPicker('pin_3')">
+                            </div>
+                            <div class="form-group pin-picker-container" id="pin4Group">
+                                <label for="pin_4" id="pin4Label">Pin 4 *</label>
+                                <input type="text" name="pin_4" id="pin_4" class="form-control" placeholder="Select pin"
+                                    readonly onclick="togglePinPicker('pin_4')">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shared Pin Picker Dropdown -->
                     <div id="pinPicker" class="pin-picker">
-                        <div style="font-weight: 600; margin-bottom: 10px;">ESP32 GPIO Pins</div>
+                        <div style="font-weight: 600; margin-bottom: 10px;">
+                            {{ platform|upper }} GPIO Pins
+                            <span style="font-weight: normal; font-size: 0.8em; margin-left: 10px; color: #666;">
+                                (Click to select)
+                            </span>
+                        </div>
                         <div class="pin-grid" id="pinGrid"></div>
                         <div style="margin-top: 10px; font-size: 0.85rem; color: #666;">
                             <span style="color: #28a745;">● Available</span> |
+                            <span style="color: #007bff;">● Selected</span> |
                             <span style="color: #dc3545;">● Used</span>
                         </div>
                     </div>
@@ -264,6 +345,38 @@
                         <span id="iconPreviewText"></span>
                     </div>
                     <div class="icon-grid" id="iconGrid"></div>
+                </div>
+            </div>
+
+            <!-- Dynamic Hardware Configuration -->
+            <div id="sensorConfig"
+                style="display: none; background: #f1f8ff; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                <h4 style="margin-top: 0; font-size: 1rem; color: #2c3e50;">Sensor Configuration</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="update_interval">Update Interval (seconds) *</label>
+                        <input type="number" name="update_interval" id="update_interval" class="form-control" value="60"
+                            min="1" max="3600">
+                        <small style="color: #666;">How often to read sensor data</small>
+                    </div>
+                    <div class="form-group" id="i2cAddressGroup" style="display: none;">
+                        <label for="i2c_address">I2C Address</label>
+                        <input type="text" name="i2c_address" id="i2c_address" class="form-control"
+                            placeholder="e.g., 0x76">
+                        <small style="color: #666;">For I2C devices (BME280, BMP280, etc.)</small>
+                    </div>
+                </div>
+            </div>
+
+            <div id="actuatorConfig"
+                style="display: none; background: #fff3e0; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                <h4 style="margin-top: 0; font-size: 1rem; color: #2c3e50;">Actuator Configuration</h4>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" name="inverted" id="inverted" value="true">
+                        <span>Inverted Logic (Active Low)</span>
+                    </label>
+                    <small style="color: #666; margin-left: 24px;">Enable for relays that trigger on LOW signal</small>
                 </div>
             </div>
 
@@ -319,8 +432,11 @@
         'button': 'mdi-gesture-tap-button',
     };
 
-    // GPIO Pin Management
-    const usablePins = [2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33];
+    // GPIO Pin Management - Platform Aware
+    const platform = '{{ platform }}';
+    const ESP32_PINS = [2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33];
+    const ESP8266_PINS = [16, 5, 4, 0, 2, 14, 12, 13, 15, 1, 3];
+    const usablePins = (platform === 'esp8266') ? ESP8266_PINS : ESP32_PINS;
     let usedPins = [];
 
     // Get used pins from existing entities
@@ -331,44 +447,79 @@
         {% if entity.gpio_pin %}
         usedPins.push({{ entity.gpio_pin }});
     {% endif %}
+    {% if entity.pin_config %}
+    {% for pin_value in entity.pin_config.values %}
+    usedPins.push({{ pin_value }});
     {% endfor %}
     {% endif %}
-}
+    {% endfor %}
+    {% endif %}
+    }
 
     // Populate icon grid
     function populateIconGrid() {
         const grid = document.getElementById('iconGrid');
         grid.innerHTML = commonIcons.map(item => `
-        <div class="icon-option" onclick="selectIcon('${item.icon}')" title="${item.name}">
-            <i class="mdi ${item.icon}"></i>
-        </div>
-    `).join('');
+            <div class="icon-option" onclick="selectIcon('${item.icon}')" title="${item.name}">
+                <i class="mdi ${item.icon}"></i>
+            </div>
+        `).join('');
     }
+
+    // Current pin input being edited
+    let currentPinInputId = 'gpio_pin';
+
+    // Multi-pin component definitions
+    const multiPinComponents = {
+        'light_rgb': { pins: 3, labels: ['Red Pin', 'Green Pin', 'Blue Pin'] },
+        'light_rgbw': { pins: 4, labels: ['Red Pin', 'Green Pin', 'Blue Pin', 'White Pin'] },
+        'stepper_uln2003': { pins: 4, labels: ['IN1', 'IN2', 'IN3', 'IN4'] },
+        'stepper_a4988': { pins: 2, labels: ['Step Pin', 'Direction Pin'] },
+        'ultrasonic_hcsr04': { pins: 2, labels: ['Trigger Pin', 'Echo Pin'] },
+        'co2_mhz19': { pins: 2, labels: ['TX Pin', 'RX Pin'] }
+    };
 
     // Populate pin grid
     function populatePinGrid() {
         const grid = document.getElementById('pinGrid');
-        const selectedPin = document.getElementById('gpio_pin').value;
+        const currentInput = document.getElementById(currentPinInputId);
+        const selectedPin = currentInput ? currentInput.value : null;
+
+        // Get all currently used pins in the form (excluding the one being edited)
+        const formUsedPins = [];
+        const inputIds = ['gpio_pin', 'pin_1', 'pin_2', 'pin_3', 'pin_4'];
+        inputIds.forEach(id => {
+            if (id !== currentPinInputId) {
+                const el = document.getElementById(id);
+                if (el && el.value) formUsedPins.push(parseInt(el.value));
+            }
+        });
 
         grid.innerHTML = usablePins.map(pin => {
             let pinClass = 'available';
             let clickable = true;
+            let title = `GPIO ${pin}`;
 
-            if (usedPins.includes(pin) && pin != selectedPin) {
+            // Check if pin is used in DB or in other form fields
+            if (usedPins.includes(pin) || formUsedPins.includes(pin)) {
                 pinClass = 'used';
                 clickable = false;
-            } else if (pin == selectedPin) {
+                title = 'Already in use';
+            }
+
+            // Check if this is the currently selected pin for this input
+            if (pin == selectedPin) {
                 pinClass = 'selected';
+                clickable = true; // Allow re-selecting same pin
             }
 
             const onclick = clickable ? `onclick="selectPin(${pin})"` : '';
-            const title = usedPins.includes(pin) && pin != selectedPin ? 'Already in use' : `GPIO ${pin}`;
 
             return `
-            <div class="pin-option ${pinClass}" ${onclick} title="${title}">
-                ${pin}
-            </div>
-        `;
+                <div class="pin-option ${pinClass}" ${onclick} title="${title}">
+                    ${pin}
+                </div>
+            `;
         }).join('');
     }
 
@@ -378,9 +529,18 @@
         grid.classList.toggle('active');
     }
 
-    // Toggle pin picker
-    function togglePinPicker() {
+    // Toggle pin picker with target
+    function togglePinPicker(targetId) {
+        if (targetId) {
+            currentPinInputId = targetId;
+        }
+
         const picker = document.getElementById('pinPicker');
+        const container = document.getElementById(currentPinInputId).closest('.pin-picker-container');
+
+        // Move picker to the correct container
+        container.appendChild(picker);
+
         picker.classList.toggle('active');
         if (picker.classList.contains('active')) {
             populatePinGrid();
@@ -404,8 +564,10 @@
 
     // Select pin
     function selectPin(pin) {
-        const input = document.getElementById('gpio_pin');
-        input.value = pin;
+        const input = document.getElementById(currentPinInputId);
+        if (input) {
+            input.value = pin;
+        }
         togglePinPicker();
     }
 
@@ -419,18 +581,105 @@
         }
     }
 
-    // Close pickers when clicking outside
+    // Update Pin Configuration UI (Single vs Multi-pin)
+    function updatePinConfig() {
+        const hardwareType = document.getElementById('hardware_type').value;
+        const singlePinGroup = document.getElementById('singlePinGroup');
+        const multiPinGroup = document.getElementById('multiPinGroup');
+        const component = multiPinComponents[hardwareType];
+
+        if (component) {
+            // Show Multi-Pin Config
+            singlePinGroup.style.display = 'none';
+            multiPinGroup.style.display = 'block';
+
+            // Show required number of pin fields and update labels
+            for (let i = 1; i <= 4; i++) {
+                const group = document.getElementById(`pin${i}Group`);
+                const label = document.getElementById(`pin${i}Label`);
+                const input = document.getElementById(`pin_${i}`);
+
+                if (i <= component.pins) {
+                    group.style.display = 'block';
+                    label.textContent = (component.labels[i - 1] || `Pin ${i}`) + ' *';
+                    input.required = true;
+                } else {
+                    group.style.display = 'none';
+                    input.value = ''; // Clear unused fields
+                    input.required = false;
+                }
+            }
+            // Clear single pin field
+            document.getElementById('gpio_pin').value = '';
+            document.getElementById('gpio_pin').required = false;
+
+        } else {
+            // Show Single Pin Config (Default)
+            singlePinGroup.style.display = 'block';
+            multiPinGroup.style.display = 'none';
+            document.getElementById('gpio_pin').required = true;
+
+            // Clear multi-pin fields
+            for (let i = 1; i <= 4; i++) {
+                const input = document.getElementById(`pin_${i}`);
+                input.value = '';
+                input.required = false;
+            }
+        }
+    }
+
+    // Update hardware configuration fields based on selected hardware type
+    function updateHardwareConfig() {
+        const hardwareType = document.getElementById('hardware_type').value;
+        const sensorConfig = document.getElementById('sensorConfig');
+        const actuatorConfig = document.getElementById('actuatorConfig');
+        const i2cAddressGroup = document.getElementById('i2cAddressGroup');
+
+        // Update pin inputs first
+        updatePinConfig();
+
+        // Hide config sections by default
+        sensorConfig.style.display = 'none';
+        actuatorConfig.style.display = 'none';
+        i2cAddressGroup.style.display = 'none';
+
+        // Sensor types
+        const sensorTypes = ['dht11', 'dht22', 'bme280', 'bmp280', 'ds18b20', 'bh1750',
+            'soil_moisture_capacitive', 'soil_ph', 'water_flow', 'mhz19_co2',
+            'ultrasonic_hcsr04'];
+
+        // I2C sensor types
+        const i2cTypes = ['bme280', 'bmp280', 'bh1750'];
+
+        // Actuator types
+        const actuatorTypes = ['relay_active_high', 'relay_active_low', 'relay_latching',
+            'solenoid_valve', 'water_pump', 'dc_motor', 'light_binary',
+            'light_dimmable', 'light_rgb', 'light_rgbw', 'fan_binary', 'heater'];
+
+        if (sensorTypes.includes(hardwareType)) {
+            sensorConfig.style.display = 'block';
+            if (i2cTypes.includes(hardwareType)) {
+                i2cAddressGroup.style.display = 'block';
+            }
+        } else if (actuatorTypes.includes(hardwareType)) {
+            actuatorConfig.style.display = 'block';
+        }
+    }
+
+    // Close pickers when clicking outside (Modified to handle moving picker)
     document.addEventListener('click', function (event) {
         const iconPicker = document.querySelector('.icon-picker');
         const iconGrid = document.getElementById('iconGrid');
-        const pinContainer = document.querySelector('.pin-picker-container');
         const pinPicker = document.getElementById('pinPicker');
+
+        // We need to check if click is inside any pin-picker-container
+        const pinContainer = event.target.closest('.pin-picker-container');
 
         if (iconPicker && !iconPicker.contains(event.target)) {
             iconGrid.classList.remove('active');
         }
 
-        if (pinContainer && !pinContainer.contains(event.target)) {
+        if (pinPicker && pinPicker.classList.contains('active') && !pinContainer) {
             pinPicker.classList.remove('active');
         }
     });
@@ -438,5 +687,12 @@
     // Initialize
     populateIconGrid();
     getUsedPins();
+    updatePinConfig();
+
+    // Add event listener for hardware type changes
+    const hardwareSelect = document.getElementById('hardware_type');
+    if (hardwareSelect) {
+        hardwareSelect.addEventListener('change', updateHardwareConfig);
+    }
 </script>
 {% endblock %}

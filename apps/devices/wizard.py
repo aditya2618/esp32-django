@@ -128,35 +128,70 @@ def wizard_step4_entities(request):
     if not wizard_data.get('mqtt'):
         return redirect('wizard_step3_mqtt')
     
+    # Get platform from wizard data
+    platform = wizard_data.get('device', {}).get('platform', 'esp32')
+    
     if request.method == 'POST':
         action = request.POST.get('action')
         
         if action == 'add_entity':
-            # Add entity to wizard data
-            entity_name = request.POST.get('entity_name')
+            # Use EntityForm with platform support
+            form = EntityForm(request.POST, platform=platform)
             
-            # Validate entity name before adding
-            try:
-                validate_entity_name(entity_name)
-            except ValidationError as e:
-                messages.error(request, f'Invalid entity name: {e.message}')
+            if form.is_valid():
+                # Add entity to wizard data
+                # Prepare entity data
+                hardware_type = form.cleaned_data.get('hardware_type', '')
+                entity = {
+                    'entity_name': form.cleaned_data['entity_name'],
+                    'entity_type': form.cleaned_data['entity_type'],
+                    'hardware_type': hardware_type,
+                    'update_interval': form.cleaned_data.get('update_interval', 60),
+                    'i2c_address': form.cleaned_data.get('i2c_address', ''),
+                    'inverted': form.cleaned_data.get('inverted', False),
+                    'friendly_name': request.POST.get('friendly_name', ''),
+                    'icon': request.POST.get('icon', ''),
+                    'room': request.POST.get('room', ''),
+                }
+                
+                # Handle Push Pin Configuration
+                from .constants import SENSOR_TYPES, ACTUATOR_TYPES
+                all_components = {**SENSOR_TYPES, **ACTUATOR_TYPES}
+                component = all_components.get(hardware_type, {})
+                pins_required = component.get('pins_required', 1)
+                
+                if pins_required > 1:
+                    # Multi-pin component
+                    entity['gpio_pin'] = None # No single main pin
+                    entity['pin_config'] = {}
+                    pin_keys = component.get('pin_keys', [])
+                    
+                    for i, key in enumerate(pin_keys):
+                        # Get pin_1, pin_2, etc.
+                        pin_val = form.cleaned_data.get(f'pin_{i+1}')
+                        if pin_val:
+                            entity['pin_config'][key] = int(pin_val)
+                else:
+                    # Single pin component
+                    gpio_val = form.cleaned_data.get('gpio_pin')
+                    entity['gpio_pin'] = int(gpio_val) if gpio_val else None
+                    entity['pin_config'] = {}
+
+                # Derive friendly name if missing
+                if not entity['friendly_name']:
+                    entity['friendly_name'] = entity['entity_name'].replace('_', ' ').title()
+
+                if not wizard_data.get('entities'):
+                    wizard_data['entities'] = []
+                
+                wizard_data['entities'].append(entity)
+                request.session['wizard_data'] = wizard_data
+                messages.success(request, f'Entity {entity["entity_name"]} added successfully')
                 return redirect('wizard_step4_entities')
-            
-            entity = {
-                'entity_name': entity_name,
-                'entity_type': request.POST.get('entity_type'),
-                'gpio_pin': request.POST.get('gpio_pin'),
-                'friendly_name': request.POST.get('friendly_name'),
-                'icon': request.POST.get('icon'),
-                'room': request.POST.get('room'),
-            }
-            
-            if not wizard_data.get('entities'):
-                wizard_data['entities'] = []
-            
-            wizard_data['entities'].append(entity)
-            request.session['wizard_data'] = wizard_data
-            messages.success(request, f'Entity {entity["entity_name"]} added successfully')
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f'{field}: {error}')
             
         elif action == 'remove_entity':
             index = int(request.POST.get('index'))
@@ -171,14 +206,24 @@ def wizard_step4_entities(request):
             else:
                 messages.error(request, 'Please add at least one entity')
     
+    # Create form with platform support for GET request
+    form = EntityForm(platform=platform)
     entities = wizard_data.get('entities', [])
+    
+    # Import constants for component info
+    from .constants import SENSOR_TYPES, ACTUATOR_TYPES
+    all_components = {**SENSOR_TYPES, **ACTUATOR_TYPES}
+    
     context = {
+        'form': form,
         'entities': entities,
         'entity_types': Entity.ENTITY_TYPES,
+        'platform': platform,
+        'all_components': all_components,
         'step': 4,
         'total_steps': 6,
         'step_title': 'Add Entities',
-        'step_description': 'Add lights, switches, fans, and sensors to your device',
+        'step_description': f'Add components to your {platform.upper()} device',
     }
     return render(request, 'wizard/step4_entities.html', context)
 
@@ -200,14 +245,26 @@ def wizard_step5_review(request):
             )
             
             for entity_data in wizard_data['entities']:
+                # Handle GPIO pin - convert to int if present, None if empty string or None
+                gpio_pin_val = entity_data.get('gpio_pin')
+                if gpio_pin_val and str(gpio_pin_val).strip():
+                    gpio_pin = int(gpio_pin_val)
+                else:
+                    gpio_pin = None
+
                 Entity.objects.create(
                     device=device,
                     entity_name=entity_data['entity_name'],
                     entity_type=entity_data['entity_type'],
-                    gpio_pin=int(entity_data['gpio_pin']) if entity_data['gpio_pin'] else None,
+                    hardware_type=entity_data.get('hardware_type', ''),
+                    gpio_pin=gpio_pin,
+                    pin_config=entity_data.get('pin_config', {}),
                     friendly_name=entity_data.get('friendly_name', ''),
                     icon=entity_data.get('icon', ''),
                     room=entity_data.get('room', ''),
+                    update_interval=int(entity_data.get('update_interval', 60)),
+                    i2c_address=entity_data.get('i2c_address', ''),
+                    inverted=bool(entity_data.get('inverted', False)),
                 )
             
             # Store device ID for next step
@@ -243,21 +300,20 @@ def wizard_step6_complete(request):
     # Get platform from wizard data (default to esp32 for backward compatibility)
     platform = wizard_data.get('device', {}).get('platform', 'esp32')
     
-    # Generate YAML with WiFi and MQTT config
+    # Generate YAML with WiFi and MQTT config from wizard data
+    wifi_ssid = wizard_data.get('wifi', {}).get('ssid', 'YOUR_WIFI_SSID')
+    wifi_password = wizard_data.get('wifi', {}).get('password', 'YOUR_WIFI_PASSWORD')
+    mqtt_broker = wizard_data.get('mqtt', {}).get('broker', 'YOUR_MQTT_BROKER_IP')
+    mqtt_port = wizard_data.get('mqtt', {}).get('port', 1883)
+    
     yaml_content = generate_esphome_yaml(
         device,
+        wifi_ssid=wifi_ssid,
+        wifi_password=wifi_password,
+        mqtt_broker=mqtt_broker,
+        mqtt_port=mqtt_port,
         platform=platform
     )
-    
-    # Replace placeholders with actual values
-    if wizard_data.get('wifi'):
-        yaml_content = yaml_content.replace('YOUR_WIFI_SSID', wizard_data['wifi']['ssid'])
-        yaml_content = yaml_content.replace('YOUR_WIFI_PASSWORD', wizard_data['wifi']['password'])
-    
-    if wizard_data.get('mqtt'):
-        yaml_content = yaml_content.replace('YOUR_MQTT_BROKER_IP', wizard_data['mqtt']['broker'])
-        yaml_content = yaml_content.replace('1883', str(wizard_data['mqtt'].get('port', 1883)))
-        yaml_content = yaml_content.replace('YOUR_MQTT_PASSWORD', wizard_data['mqtt'].get('password', ''))
     
     # Check if user wants to compile firmware
     compile_firmware_flag = request.GET.get('compile', 'false') == 'true'

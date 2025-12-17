@@ -120,17 +120,33 @@
         {% for entity in wizard_data.entities %}
         <div
             style="background: white; padding: 15px; border-radius: 4px; margin-bottom: 10px; border-left: 4px solid #3498db;">
-            <div style="display: flex; justify-content: space-between;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
                 <div>
                     <strong style="font-size: 1.1rem;">{{ entity.friendly_name|default:entity.entity_name }}</strong>
                     <span
                         style="background: #e3f2fd; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; margin-left: 10px;">
                         {{ entity.entity_type|title }}
                     </span>
+                    {% if entity.hardware_type %}
+                    <span
+                        style="background: #fff3e0; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; margin-left: 5px;">
+                        {{ entity.hardware_type }}
+                    </span>
+                    {% endif %}
                 </div>
                 <div style="text-align: right; color: #666;">
-                    {% if entity.gpio_pin %}
+                    {% if entity.pin_config %}
+                    <div style="font-size: 0.9rem;">
+                        {% for key, val in entity.pin_config.items %}
+                        <div style="background: #e8f5e9; padding: 3px 8px; border-radius: 4px; margin-bottom: 3px;">
+                            <strong>{{ key|title }}:</strong> GPIO {{ val }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% elif entity.gpio_pin %}
                     <strong>GPIO {{ entity.gpio_pin }}</strong>
+                    {% else %}
+                    <span style="color: #999;">No GPIO</span>
                     {% endif %}
                 </div>
             </div>
@@ -138,6 +154,8 @@
                 <strong>ID:</strong> <code>{{ entity.entity_name }}</code>
                 {% if entity.room %} | <strong>Room:</strong> {{ entity.room }}{% endif %}
                 {% if entity.icon %} | <strong>Icon:</strong> {{ entity.icon }}{% endif %}
+                {% if entity.update_interval and entity.entity_type == 'sensor' %} | <strong>Update:</strong> {{
+                entity.update_interval }}s{% endif %}
             </div>
         </div>
         {% endfor %}

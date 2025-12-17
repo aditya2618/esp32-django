@@ -7,7 +7,7 @@ class Device(models.Model):
     """ESPHome Device"""
     home_id = models.CharField(max_length=50)
     name = models.CharField(max_length=100)
-    node_name = models.CharField(max_length=100, unique=True, help_text="ESPHome node name (e.g., home1_livingroom_node1)")
+    node_name = models.CharField(max_length=100, help_text="ESPHome node name (e.g., home1_livingroom_node1)")
     is_online = models.BooleanField(default=False)
     last_seen = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -49,6 +49,74 @@ class Entity(models.Model):
     entity_type = models.CharField(max_length=20, choices=ENTITY_TYPES)
     gpio_pin = models.IntegerField(null=True, blank=True, help_text="GPIO pin number (if applicable)")
     
+    # Hardware Configuration
+    hardware_type = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Specific hardware type (e.g., 'dht22', 'relay_active_high', 'soil_moisture_capacitive')"
+    )
+    
+    # Additional GPIO pins for multi-pin components (RGB lights, I2C, UART, etc.)
+    pin_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional pins: {'sda': 21, 'scl': 22, 'red': 25, 'green': 26, 'blue': 27}"
+    )
+    
+    # Sensor-specific fields
+    update_interval = models.IntegerField(
+        default=60,
+        help_text="Update interval in seconds (for sensors)"
+    )
+    i2c_address = models.CharField(
+        max_length=10,
+        blank=True,
+        help_text="I2C address (e.g., '0x76' for BME280)"
+    )
+    
+    # Actuator-specific fields
+    inverted = models.BooleanField(
+        default=False,
+        help_text="Invert signal (for active-low relays)"
+    )
+    pulse_duration = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Pulse duration in milliseconds (for latching relays)"
+    )
+    
+    # Light-specific fields
+    supports_brightness = models.BooleanField(
+        default=False,
+        help_text="Supports brightness control (PWM)"
+    )
+    supports_color = models.BooleanField(
+        default=False,
+        help_text="Supports color control (RGB/RGBW)"
+    )
+    color_mode = models.CharField(
+        max_length=20,
+        blank=True,
+        choices=[
+            ('rgb', 'RGB'),
+            ('rgbw', 'RGBW'),
+            ('rgbww', 'RGBWW'),
+        ],
+        help_text="Color mode for RGB lights"
+    )
+    
+    # Cover-specific fields
+    open_duration = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Time to fully open in seconds (for covers/blinds)"
+    )
+    close_duration = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Time to fully close in seconds (for covers/blinds)"
+    )
+    
     # Metadata for external app integration
     friendly_name = models.CharField(max_length=100, blank=True, help_text="Display name (e.g., Living Room Fan)")
     icon = models.CharField(max_length=50, blank=True, help_text="Material Design Icon (e.g., mdi:fan)")
@@ -63,7 +131,6 @@ class Entity(models.Model):
     last_updated = models.DateTimeField(null=True, blank=True)
     
     class Meta:
-        unique_together = ('device', 'entity_name')
         ordering = ['device', 'entity_type', 'entity_name']
     
     def __str__(self):
