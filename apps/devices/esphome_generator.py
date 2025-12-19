@@ -78,13 +78,58 @@ mqtt:
 """
     
     # Check if I2C is needed
-    i2c_needed = any(e.hardware_type in ['bme280', 'bmp280', 'bh1750'] for e in entities)
+    i2c_needed = any(e.hardware_type in ['bme280', 'bmp280', 'bh1750', 'sht30', 'bme680', 'ccs811', 'ina219', 'ina226'] for e in entities)
     if i2c_needed:
         yaml += """# I2C Configuration
 i2c:
   sda: GPIO21
   scl: GPIO22
   scan: true
+
+"""
+    
+    # Check if UART is needed
+    uart_needed = any(e.hardware_type in ['co2_mhz19', 'soil_npk_modbus'] for e in entities)
+    if uart_needed:
+        yaml += """# UART Configuration
+uart:
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 9600
+
+"""
+    
+    # Check if Modbus is needed
+    modbus_needed = any(e.hardware_type in ['soil_npk_modbus'] for e in entities)
+    if modbus_needed:
+        yaml += """# Modbus Configuration
+modbus:
+  id: modbus1
+
+modbus_controller:
+  - id: modbus1
+    address: 0x01
+    modbus_id: modbus1
+    update_interval: 60s
+
+"""
+    
+    # Check if SPI is needed
+    spi_needed = any(e.hardware_type in ['max31865'] for e in entities)
+    if spi_needed:
+        yaml += """# SPI Configuration
+spi:
+  clk_pin: GPIO18
+  miso_pin: GPIO19
+  mosi_pin: GPIO23
+
+"""
+    
+    # Check if BLE is needed (ESP32 only)
+    ble_needed = any(e.hardware_type in ['ble_presence'] for e in entities)
+    if ble_needed and platform.lower() == 'esp32':
+        yaml += """# Bluetooth LE Tracker (ESP32 only)
+esp32_ble_tracker:
 
 """
     
@@ -227,6 +272,12 @@ def generate_sensors_yaml(entities):
     unit_of_measurement: "cm"
 
 """
+        else:
+            # Try extended templates for new sensors
+            from .esphome_templates_extended import generate_new_sensor_templates
+            extended_yaml = generate_new_sensor_templates(entity, name)
+            if extended_yaml:
+                yaml += extended_yaml
     
     return yaml
 
