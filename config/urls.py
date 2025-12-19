@@ -21,6 +21,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/', include('apps.devices.api_urls')),  # API endpoints for mobile app
     path('', include('apps.devices.urls')),
 ]
 

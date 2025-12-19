@@ -137,14 +137,21 @@ def wizard_step4_entities(request):
         if action == 'add_entity':
             # Use EntityForm with platform support
             form = EntityForm(request.POST, platform=platform)
+            # Attach request to form for session access in validation
+            form._request = request
             
             if form.is_valid():
                 # Add entity to wizard data
                 # Prepare entity data
                 hardware_type = form.cleaned_data.get('hardware_type', '')
+                
+                # Auto-derive entity_type from hardware_type
+                from .hardware_mapping import get_entity_type_for_hardware
+                entity_type = get_entity_type_for_hardware(hardware_type)
+                
                 entity = {
                     'entity_name': form.cleaned_data['entity_name'],
-                    'entity_type': form.cleaned_data['entity_type'],
+                    'entity_type': entity_type,  # Auto-derived from hardware_type
                     'hardware_type': hardware_type,
                     'update_interval': form.cleaned_data.get('update_interval', 60),
                     'i2c_address': form.cleaned_data.get('i2c_address', ''),

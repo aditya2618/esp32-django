@@ -48,9 +48,10 @@ class EntityForm(forms.ModelForm):
     class Meta:
         model = Entity
         fields = [
-            'entity_name', 'entity_type', 'hardware_type', 'gpio_pin',
+            'entity_name', 'hardware_type', 'gpio_pin',
             'update_interval', 'i2c_address', 'inverted'
         ]
+        # Note: entity_type is auto-derived from hardware_type
         # Note: pin_1, pin_2, pin_3, pin_4 are added dynamically in __init__
         widgets = {
             'entity_name': forms.TextInput(attrs={
@@ -59,7 +60,6 @@ class EntityForm(forms.ModelForm):
                 'pattern': '[a-zA-Z_][a-zA-Z0-9_]*',
                 'title': 'Must start with letter/underscore'
             }),
-            'entity_type': forms.Select(attrs={'class': 'form-control'}),
             'gpio_pin': forms.Select(attrs={'class': 'form-control'}),
             'update_interval': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
             'i2c_address': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 0x76'}),
@@ -168,9 +168,27 @@ class EntityForm(forms.ModelForm):
         # We handle required check in clean() now because it depends on hardware_type
         gpio_pin = self.cleaned_data.get('gpio_pin')
         if gpio_pin:
-             if self.device:
+            gpio_pin_int = int(gpio_pin)
+            
+            # Check for interface conflicts (UART/I2C/SPI)
+            # Get existing entities from session if in wizard context
+            from django.http import HttpRequest
+            request = getattr(self, '_request', None)
+            if request and hasattr(request, 'session'):
+                wizard_data = request.session.get('wizard_data', {})
+                existing_entities = wizard_data.get('entities', [])
+                
+                # Validate against interface reservations
+                from .validators import validate_gpio_not_reserved_by_interface
+                try:
+                    validate_gpio_not_reserved_by_interface(gpio_pin_int, existing_entities)
+                except ValidationError as e:
+                    raise e
+            
+            # Check uniqueness against database
+            if self.device:
                 exclude_id = self.instance.id if self.instance.pk else None
-                validate_unique_gpio(self.device, int(gpio_pin), exclude_id)
+                validate_unique_gpio(self.device, gpio_pin_int, exclude_id)
         return gpio_pin
 
 

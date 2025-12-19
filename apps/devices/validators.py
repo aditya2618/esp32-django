@@ -106,3 +106,105 @@ def validate_unique_gpio(device, pin, exclude_id=None):
         )
     
     return True
+
+
+def get_reserved_pins_for_interfaces(entities):
+    """
+    Get list of GPIO pins reserved by special interfaces (UART, I2C, SPI).
+    
+    Args:
+        entities: List of entity dictionaries or Entity objects
+        
+    Returns:
+        dict: {
+            'uart': [16, 17],
+            'i2c': [21, 22],
+            'spi': [18, 19, 23],
+            'all_reserved': [16, 17, 21, 22, 18, 19, 23]
+        }
+    """
+    reserved = {
+        'uart': [],
+        'i2c': [],
+        'spi': [],
+        'all_reserved': []
+    }
+    
+    # Hardware types that use special interfaces
+    UART_COMPONENTS = ['co2_mhz19', 'soil_npk_modbus']
+    I2C_COMPONENTS = ['bme280', 'bmp280', 'bh1750', 'sht30', 'bme680', 'ccs811', 'ina219', 'ina226']
+    SPI_COMPONENTS = ['max31865']
+    
+    for entity in entities:
+        # Handle both dict and object
+        hw_type = entity.get('hardware_type') if isinstance(entity, dict) else entity.hardware_type
+        
+        if hw_type in UART_COMPONENTS:
+            # Default UART pins for ESP32
+            reserved['uart'] = [16, 17]  # RX, TX
+            
+        if hw_type in I2C_COMPONENTS:
+            # Default I2C pins for ESP32
+            reserved['i2c'] = [21, 22]  # SDA, SCL
+            
+        if hw_type in SPI_COMPONENTS:
+            # Default SPI pins for ESP32
+            reserved['spi'] = [18, 19, 23]  # CLK, MISO, MOSI
+    
+    # Combine all reserved pins
+    reserved['all_reserved'] = list(set(reserved['uart'] + reserved['i2c'] + reserved['spi']))
+    
+    return reserved
+
+
+def validate_gpio_not_reserved_by_interface(pin, entities, current_entity_name=None):
+    """
+    Validate that a GPIO pin is not reserved by UART/I2C/SPI interfaces.
+    
+    Args:
+        pin: GPIO pin number to validate
+        entities: List of existing entities (dicts or objects)
+        current_entity_name: Name of current entity being validated (to skip in check)
+        
+    Raises:
+        ValidationError: If pin is reserved by an interface
+    """
+    reserved_info = get_reserved_pins_for_interfaces(entities)
+    
+    if pin in reserved_info['uart']:
+        # Find which UART component is using it
+        uart_components = [e for e in entities if (e.get('hardware_type') if isinstance(e, dict) else e.hardware_type) in ['co2_mhz19', 'soil_npk_modbus']]
+        if uart_components:
+            comp = uart_components[0]
+            comp_name = comp.get('entity_name') if isinstance(comp, dict) else comp.entity_name
+            raise ValidationError(
+                f"GPIO {pin} is reserved for UART interface (used by '{comp_name}'). "
+                f"UART uses GPIO 16 (RX) and GPIO 17 (TX). "
+                f"Please choose a different GPIO pin."
+            )
+    
+    if pin in reserved_info['i2c']:
+        # Find which I2C component is using it
+        i2c_components = [e for e in entities if (e.get('hardware_type') if isinstance(e, dict) else e.hardware_type) in ['bme280', 'bmp280', 'bh1750', 'sht30', 'bme680', 'ccs811', 'ina219', 'ina226']]
+        if i2c_components:
+            comp = i2c_components[0]
+            comp_name = comp.get('entity_name') if isinstance(comp, dict) else comp.entity_name
+            raise ValidationError(
+                f"GPIO {pin} is reserved for I2C interface (used by '{comp_name}'). "
+                f"I2C uses GPIO 21 (SDA) and GPIO 22 (SCL). "
+                f"Please choose a different GPIO pin."
+            )
+    
+    if pin in reserved_info['spi']:
+        # Find which SPI component is using it
+        spi_components = [e for e in entities if (e.get('hardware_type') if isinstance(e, dict) else e.hardware_type) in ['max31865']]
+        if spi_components:
+            comp = spi_components[0]
+            comp_name = comp.get('entity_name') if isinstance(comp, dict) else comp.entity_name
+            raise ValidationError(
+                f"GPIO {pin} is reserved for SPI interface (used by '{comp_name}'). "
+                f"SPI uses GPIO 18 (CLK), GPIO 19 (MISO), and GPIO 23 (MOSI). "
+                f"Please choose a different GPIO pin."
+            )
+    
+    return True
