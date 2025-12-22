@@ -109,13 +109,20 @@
         Select how you want to flash your ESP32 device:
     </p>
 
+    <!-- Browser Compatibility Warning -->
+    <div id="browserWarning" style="display: none; background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+        <strong>⚠️ Browser Not Supported</strong>
+        <p style="margin: 10px 0 0 0; color: #856404;">Web Serial API requires Chrome 89+ or Edge 89+ browser. Please use one of these browsers for direct ESP32 detection, or use the manual ESPHome CLI method below.</p>
+    </div>
+
     <!-- ESP32 Connection Status -->
     <div id="connectionStatus"
         style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #6c757d;">
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <div id="statusIndicator" style="width: 12px; height: 12px; border-radius: 50%; background: #6c757d;"></div>
             <strong>ESP32 Connection:</strong>
             <span id="statusText">Checking...</span>
+            <button onclick="detectESP32()" class="btn btn-small" style="background: #007bff; color: white;">🔍 Detect ESP32</button>
             <button onclick="checkConnection()" class="btn btn-small" style="margin-left: auto;">🔄 Refresh</button>
         </div>
         <div id="portInfo" style="margin-top: 10px; font-size: 0.9rem; color: #666; display: none;"></div>
@@ -477,31 +484,36 @@
         }
     });
 
-    // Option 3: CLI Flash Functions
-    function detectFlashPorts() {
+    // Option 3: CLI Flash Functions (now using Web Serial API)
+    async function detectFlashPorts() {
         const select = document.getElementById('flash-port-select');
+        
+        if (!isWebSerialSupported()) {
+            select.innerHTML = '<option value="">Web Serial not supported - Use Chrome/Edge</option>';
+            return;
+        }
+        
         select.innerHTML = '<option value="">Detecting ports...</option>';
-
-        fetch('/api/detect-flash-ports/')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.ports.length > 0) {
-                    select.innerHTML = '<option value="">Select a port...</option>';
-                    data.ports.forEach(port => {
-                        const option = document.createElement('option');
-                        option.value = port.port;
-                        option.textContent = `${port.port} - ${port.description}`;
-                        select.appendChild(option);
-                    });
-                } else {
-                    select.innerHTML = '<option value="">No ESP devices found</option>';
-                    alert('No ESP32/ESP8266 devices detected. Please connect your device via USB.');
-                }
-            })
-            .catch(error => {
-                console.error('Error detecting ports:', error);
-                select.innerHTML = '<option value="">Error detecting ports</option>';
-            });
+        
+        try {
+            const ports = await getAuthorizedPorts();
+            
+            if (ports.length > 0) {
+                select.innerHTML = '<option value="">Select a port...</option>';
+                ports.forEach((port, index) => {
+                    const info = port.getInfo();
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `ESP32 Device (VID: 0x${info.usbVendorId?.toString(16).toUpperCase()})`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">No ESP32 detected - Click "Detect ESP32" above</option>';
+            }
+        } catch (error) {
+            console.error('Error detecting ports:', error);
+            select.innerHTML = '<option value="">Error detecting ports</option>';
+        }
     }
 
     function flashViaCLI() {
